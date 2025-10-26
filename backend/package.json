@@ -1,12 +1,19 @@
 {
-  "name": "audio-video-call-signaling-server",
+  "name": "echolinkplus-backend",
   "version": "1.0.0",
-  "description": "WebRTC Signaling Server using WebSockets for user presence and call setup.",
+  "description": "EchoLink+ WebRTC Signaling Server for audio calls using WebSockets, Express, and CORS.",
   "main": "server.js",
   "scripts": {
     "start": "node server.js"
   },
   "dependencies": {
-    "ws": "^8.16.0"
-  }
+    "express": "^4.18.2",
+    "ws": "^8.17.0",
+    "cors": "^2.8.5"
+  },
+  "engines": {
+    "node": ">=16.x"
+  },
+  "author": "Mantong Gopep",
+  "license": "MIT"
 }

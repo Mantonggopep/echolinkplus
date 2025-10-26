@@ -1,0 +1,58 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Echo-Link+</title>
+  <link rel="stylesheet" href="style.css" />
+</head>
+<body>
+  <div class="container">
+    <h1>Echo-Link+</h1>
+    <div id="status-message" class="status-box">Initializing...</div>
+
+    <!-- Login View -->
+    <div id="login-view" class="card">
+      <h2>Enter Your Echo-Name</h2>
+      <input type="text" id="usernameInput" placeholder="e.g., Mantong" />
+      <button id="loginBtn" onclick="handleLogin()">Connect</button>
+    </div>
+
+    <!-- App View -->
+    <div id="app-view" class="hidden">
+      <div class="call-bar">
+        <div id="call-message">Logged in as:</div>
+        <div id="mic-indicator" class="mic-status inactive" title="Microphone Inactive">
+          🎙️
+        </div>
+      </div>
+
+      <div class="card user-list-container">
+        <h2>Available Echo-Link Users</h2>
+        <ul id="user-list"></ul>
+      </div>
+
+      <div id="call-controls" class="call-controls hidden">
+        <button class="hangup-btn" onclick="hangUp()">End Echo-Link</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Hidden audio elements -->
+  <audio id="localAudio" autoplay muted class="hidden-media"></audio>
+  <audio id="remoteAudio" autoplay class="hidden-media"></audio>
+
+  <!-- Incoming Call Modal -->
+  <div id="incoming-call-modal" class="modal hidden">
+    <div class="modal-content">
+      <p id="incoming-caller-name">Incoming Echo-Link...</p>
+      <div class="modal-buttons">
+        <button class="accept-btn" onclick="acceptCall()">Accept</button>
+        <button class="reject-btn" onclick="rejectCall()">Reject</button>
+      </div>
+    </div>
+  </div>
+
+  <script src="app.js"></script>
+</body>
+</html>

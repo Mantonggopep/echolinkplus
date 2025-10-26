@@ -1,16 +1,15 @@
 @import url('https://fonts.googleapis.com/css2?family=Poppins:wght@400;600;700&display=swap');
 
 :root {
-    /* New Echo-Link Colors */
-    --primary-color: #007bff;     /* Blue: Connect/Action */
+    --primary-color: #007bff;
     --primary-dark: #0056b3;
-    --accent-color: #dc3545;      /* Red: Hangup/Decline */
-    --bg-color: #f4f7f9;          /* Light Gray Background */
-    --card-bg: #ffffff;           /* White Card */
+    --accent-color: #dc3545;
+    --bg-color: #f4f7f9;
+    --card-bg: #ffffff;
     --shadow-color: rgba(0, 0, 0, 0.08);
-    --status-success: #28a745;    /* Green */
-    --status-error: #dc3545;      /* Red */
-    --status-info: #ffc107;       /* Yellow */
+    --status-success: #28a745;
+    --status-error: #dc3545;
+    --status-info: #ffc107;
 }
 
 body {
@@ -36,23 +35,21 @@ h1 {
     font-weight: 700;
 }
 
-/* --- Status Box --- */
 .status-box {
     padding: 12px;
     margin-bottom: 25px;
     border-radius: 8px;
-    background-color: #e6f7ff; /* Lightest Blue */
+    background-color: #e6f7ff;
     color: var(--primary-dark);
     font-weight: 600;
     border: 1px solid #cceeff;
 }
 
-/* --- Card Style --- */
 .card {
     background-color: var(--card-bg);
     padding: 25px;
     margin-bottom: 25px;
-    border-radius: 15px; /* Softer, modern corners */
+    border-radius: 15px;
     box-shadow: 0 6px 15px var(--shadow-color);
 }
 
@@ -63,12 +60,8 @@ h1 {
     margin-bottom: 20px;
 }
 
-/* Hide media elements used only for streaming */
-.hidden-media {
-    display: none !important; 
-}
+.hidden-media { display: none !important; }
 
-/* --- Input and Buttons --- */
 input[type="text"] {
     width: 100%;
     padding: 12px 15px;
@@ -127,10 +120,7 @@ button:disabled {
     box-shadow: 0 4px 8px rgba(220, 53, 69, 0.4);
 }
 
-/* --- User List --- */
-.user-list-container {
-    padding: 20px;
-}
+.user-list-container { padding: 20px; }
 
 #user-list {
     list-style: none;
@@ -145,9 +135,7 @@ button:disabled {
     padding: 15px 0;
     border-bottom: 1px solid #eee;
 }
-.user-item:last-child {
-    border-bottom: none;
-}
+.user-item:last-child { border-bottom: none; }
 
 .user-item span {
     font-weight: 600;
@@ -181,27 +169,23 @@ button:disabled {
     background-color: #f8d7da;
 }
 
-/* --- Call Status Bar --- */
 .call-bar {
-    /* Updated to use flexbox to include the microphone icon */
     display: flex;
     justify-content: space-between;
     align-items: center;
     padding: 15px;
     margin-bottom: 25px;
     border-radius: 10px;
-    background-color: #fffbe6; /* Light Yellow for Alert */
+    background-color: #fffbe6;
     color: #856404;
     font-weight: 600;
     border: 1px solid #ffeeba;
 }
 #call-message {
-    /* Ensure message takes up most space */
     flex-grow: 1; 
     text-align: left;
 }
 
-/* NEW: Microphone Status Indicator Styles */
 .mic-status {
     width: 30px;
     height: 30px;
@@ -212,33 +196,12 @@ button:disabled {
     margin-left: 10px;
     transition: background-color 0.3s, color 0.3s;
 }
+.mic-status.active { background-color: var(--status-success); color: white; }
+.mic-status.inactive { background-color: #ccc; color: #888; }
+.mic-status.error { background-color: var(--status-error); color: white; }
 
-.mic-status svg {
-    stroke-width: 2.5;
-}
+.call-controls { padding-top: 10px; }
 
-.mic-status.active {
-    background-color: var(--status-success);
-    color: white;
-}
-
-.mic-status.inactive {
-    background-color: #ccc;
-    color: #888;
-}
-
-.mic-status.error {
-    background-color: var(--status-error);
-    color: white;
-}
-
-
-/* --- Call Controls --- */
-.call-controls {
-    padding-top: 10px;
-}
-
-/* --- Modals (Incoming Call) --- */
 .modal {
     position: fixed;
     z-index: 100; 
@@ -247,7 +210,7 @@ button:disabled {
     width: 100%;
     height: 100%;
     overflow: auto;
-    background-color: rgba(0,0,0,0.7); /* Darker overlay */
+    background-color: rgba(0,0,0,0.7);
     display: flex;
     align-items: center;
     justify-content: center;
@@ -270,11 +233,6 @@ button:disabled {
     margin-bottom: 25px;
 }
 
-.modal-buttons button {
-    margin-top: 10px;
-}
+.modal-buttons button { margin-top: 10px; }
 
-/* Utility Classes */
-.hidden {
-    display: none !important;
-}
+.hidden { display: none !important; }

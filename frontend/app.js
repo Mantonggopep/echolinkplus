@@ -53,20 +53,21 @@ const muteButton = document.getElementById('muteButton'); // Mute button
 const unmuteButton = document.getElementById('unmuteButton'); // Unmute button
 
 
-// --- On Load: Try Persistent Login & Initial WebSocket Connect ---
+// --- On Load: Try Persistent Login & Initial WebSocket Connect (FIXED) ---
 window.addEventListener("load", () => {
   const savedUser = localStorage.getItem("echoname");
   if (savedUser) {
     document.getElementById("usernameInput").value = savedUser;
-    username = savedUser; // Set global username early for login attempt
-    connectWebSocket(); // Connect WebSocket and attempt login on open
+    // Call handleLogin directly to set username and attempt connection/login
+    handleLogin(savedUser);
   } else {
-    connectWebSocket(); // Connect WebSocket immediately even if no saved user
+    // Only connect the WebSocket. We don't attempt login as username is empty.
+    connectWebSocket(false);
   }
 });
 
-// --- WebSocket Management ---
-function connectWebSocket() {
+// --- WebSocket Management (FIXED) ---
+function connectWebSocket(attemptLoginOnOpen = true) { // Added parameter
   if (ws && (ws.readyState === WebSocket.OPEN || ws.readyState === WebSocket.CONNECTING)) {
     console.log("WebSocket already open or connecting.");
     return;
@@ -77,8 +78,8 @@ function connectWebSocket() {
   ws.onopen = () => {
     console.log("✅ WebSocket connected.");
     statusMessage.textContent = "Connected to EchoLink+ Server.";
-    // If username is set (from saved user or manual input), attempt login
-    if (username) {
+    // Check both the flag and the global username before attempting login
+    if (attemptLoginOnOpen && username) {
       sendSignalingMessage({ type: "login", username });
     }
   };
@@ -181,7 +182,9 @@ function connectWebSocket() {
     console.warn("🔌 WebSocket closed. Reconnecting in 3 seconds...");
     statusMessage.textContent = "Disconnected. Reconnecting...";
     endCall(false); // Clean up any active call state
-    setTimeout(() => connectWebSocket(), 3000);
+    // IMPORTANT: If we are trying to login, we should keep the flag true for the reconnect.
+    const shouldAttemptLogin = !!username; 
+    setTimeout(() => connectWebSocket(shouldAttemptLogin), 3000);
   };
 
   ws.onerror = (err) => {
@@ -202,7 +205,7 @@ function sendSignalingMessage(message) {
   }
 }
 
-// --- UI Functions ---
+// --- UI Functions (FIXED handleLogin) ---
 function handleLogin(savedUser = null) {
   const inputUsername = document.getElementById("usernameInput")?.value?.trim();
   const userToLogin = savedUser || inputUsername;
@@ -212,14 +215,16 @@ function handleLogin(savedUser = null) {
     return;
   }
   
-  // Update global username variable *before* trying to connect/login
+  // 1. ALWAYS set the global username first.
   username = userToLogin; 
 
   if (ws?.readyState === WebSocket.OPEN) {
+    // 2. If the WS is open, send the message immediately.
     sendSignalingMessage({ type: "login", username });
   } else {
-    // If WS is not open, connectWebSocket will handle sending 'login' in its onopen handler
-    connectWebSocket(); 
+    // 3. If WS is closed or null, start the connection process.
+    // The connectWebSocket(true) call ensures 'login' is sent on 'onopen'.
+    connectWebSocket(true); 
   }
 }
 
@@ -543,12 +548,4 @@ function stopCallTimer() {
 // --- Mute/Unmute Functionality ---
 function toggleMute() {
     if (!localStream) {
-        console.warn("No local stream to mute/unmute.");
-        statusMessage.textContent = "No active microphone.";
-        return;
-    }
-
-    const audioTracks = localStream.getAudioTracks();
-    if (audioTracks.length === 0) {
-        console.warn("No audio tracks found in local stream.");
-        statusMessage.textContent = "No audio input a
+        cons

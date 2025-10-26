@@ -1,0 +1,12 @@
+{
+  "name": "audio-video-call-signaling-server",
+  "version": "1.0.0",
+  "description": "WebRTC Signaling Server using WebSockets for user presence and call setup.",
+  "main": "server.js",
+  "scripts": {
+    "start": "node server.js"
+  },
+  "dependencies": {
+    "ws": "^8.16.0"
+  }
+}

@@ -1,0 +1,66 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Echo-Link | Fast Audio Call</title>
+    <!-- Load custom styles -->
+    <link rel="stylesheet" href="echo-link.css">
+</head>
+<body>
+    <div class="container">
+        <h1>Echo-Link 🎙️</h1>
+        <div id="status-message" class="status-box">Ready to log in.</div>
+
+        <!-- 1. Login/Profile View -->
+        <div id="login-view" class="card">
+            <h2>Connect to the Network</h2>
+            <input type="text" id="usernameInput" placeholder="Enter your Echo-Name" maxlength="15">
+            <button id="loginBtn" onclick="handleLogin()">Connect</button>
+        </div>
+
+        <!-- 2. Main App View (Hidden until login) -->
+        <div id="app-view" class="hidden">
+            
+            <audio id="localAudio" muted autoplay playsinline class="hidden-media"></audio>
+            <audio id="remoteAudio" autoplay playsinline class="hidden-media"></audio>
+
+            <div id="call-status-bar" class="call-bar">
+                <span id="call-message">Select a user to call.</span>
+                <!-- NEW: Microphone Status Indicator -->
+                <div id="mic-indicator" class="mic-status inactive" title="Microphone Status">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 1a3 3 0 0 0-3 3v8a3 3 0 0 0 6 0V4a3 3 0 0 0-3-3z"/><path d="M19 10v2a7 7 0 0 1-14 0v-2"/><path d="M12 21v-3"/></svg>
+                </div>
+            </div>
+
+            <div class="user-list-container card">
+                <h2>Online Users</h2>
+                <ul id="user-list">
+                    <li class="user-item">No other users online.</li>
+                </ul>
+            </div>
+            
+            <div id="call-controls" class="call-controls hidden">
+                <button id="hangupBtn" class="hangup-btn" onclick="hangUp()">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 16.92v3a2 2 0 0 1-2 2A18.5 18.5 0 0 1 2 4a2 2 0 0 1 2-2h3v10z"/><path d="M12 2v10m-3-3h6"/></svg>
+                    <span>End Call</span>
+                </button>
+            </div>
+        </div>
+
+        <!-- 3. Incoming Call Modal -->
+        <div id="incoming-call-modal" class="modal hidden">
+            <div class="modal-content">
+                <p id="incoming-caller-name">Incoming Link...</p>
+                <div class="modal-buttons">
+                    <button class="accept-btn" onclick="acceptCall()">Accept</button>
+                    <button class="reject-btn" onclick="rejectCall()">Decline</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Load JavaScript -->
+    <script src="echo-link.js"></script>
+</body>
+</html>

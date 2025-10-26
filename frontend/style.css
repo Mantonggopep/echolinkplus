@@ -1,216 +1,379 @@
-/* 🌟 Base Reset */
-* {
-  box-sizing: border-box;
-  margin: 0;
-  padding: 0;
-  font-family: "Poppins", sans-serif;
+/* style.css */
+
+/* Sweet Colors Palette */
+:root {
+    --primary-blue: #667eea; /* A soft, appealing blue */
+    --secondary-purple: #764ba2; /* Complementary purple */
+    --background-light: #f7f9fc; /* Very light, almost white background */
+    --text-dark: #334155; /* Dark blue-grey for main text */
+    --text-light: #fefefe; /* White for text on dark backgrounds */
+    --success-green: #2ecc71; /* Bright green for success */
+    --danger-red: #ef4444; /* Soft red for danger/hangup */
+    --warning-orange: #f59e0b; /* Orange for mute/unmute */
+    --card-background: #ffffff; /* White for main content cards */
+    --border-light: #e2e8f0; /* Light grey for borders */
 }
 
+/* Base Styles */
 body {
-  background: radial-gradient(circle at top, #101820, #080c12);
-  color: #fff;
-  display: flex;
-  justify-content: center;
-  align-items: center;
-  min-height: 100vh;
+    font-family: 'Poppins', sans-serif;
+    margin: 0;
+    padding: 0;
+    background: var(--background-light);
+    color: var(--text-dark);
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center; /* Center vertically */
+    min-height: 100vh;
+    box-sizing: border-box;
+    background-image: linear-gradient(135deg, var(--primary-blue) 0%, var(--secondary-purple) 100%);
+    overflow-x: hidden; /* Prevent horizontal scroll on small screens */
 }
 
-/* 🧱 Container */
 .container {
-  width: 95%;
-  max-width: 500px;
-  text-align: center;
-  padding: 25px;
-  background: #111a23;
-  border-radius: 16px;
-  box-shadow: 0 0 25px rgba(0, 255, 200, 0.2);
+    background-color: var(--card-background);
+    border-radius: 16px;
+    box-shadow: 0 10px 30px rgba(0, 0, 0, 0.1);
+    padding: 40px;
+    max-width: 450px;
+    width: 90%;
+    text-align: center;
+    margin: 20px 0;
+    box-sizing: border-box;
+    position: relative; /* For status message positioning */
 }
 
-/* 🧩 Header */
 h1 {
-  color: #00ffc8;
-  font-size: 2rem;
-  margin-bottom: 15px;
+    color: var(--primary-blue);
+    margin-bottom: 15px;
+    font-size: 2.5em;
+    font-weight: 700;
 }
 
-/* 💬 Status Message */
-#status-message {
-  background: #162029;
-  border: 1px solid #00ffc8;
-  border-radius: 10px;
-  padding: 8px;
-  font-size: 0.9rem;
-  color: #00ffc8;
-  margin-bottom: 20px;
-  transition: 0.3s;
+h2 {
+    color: var(--text-dark);
+    margin-top: 30px;
+    margin-bottom: 20px;
+    font-size: 1.6em;
+    font-weight: 600;
 }
 
-/* ✍️ Input + Buttons */
-input {
-  width: 80%;
-  padding: 10px;
-  border-radius: 8px;
-  border: 1px solid #00ffc8;
-  background: #0b121a;
-  color: #fff;
-  margin-bottom: 15px;
+p {
+    line-height: 1.6;
+    margin: 0 0 10px 0;
+}
+
+.placeholder-text {
+    color: #999;
+    font-style: italic;
+}
+
+.hidden {
+    display: none !important;
+}
+
+/* Form Elements & Buttons */
+input[type="text"] {
+    width: calc(100% - 20px); /* Adjusting for padding */
+    padding: 12px;
+    margin: 8px 0;
+    border-radius: 8px;
+    border: 1px solid var(--border-light);
+    box-sizing: border-box;
+    font-size: 1em;
+    transition: all 0.3s ease;
+}
+
+input[type="text"]:focus {
+    border-color: var(--primary-blue);
+    box-shadow: 0 0 0 2px rgba(102, 126, 234, 0.2);
+    outline: none;
 }
 
 button {
-  background: #00ffc8;
-  color: #000;
-  border: none;
-  border-radius: 8px;
-  padding: 10px 18px;
-  cursor: pointer;
-  font-weight: bold;
-  transition: 0.2s;
+    background-color: var(--primary-blue);
+    color: var(--text-light);
+    cursor: pointer;
+    border: none;
+    font-weight: 500;
+    letter-spacing: 0.5px;
+    text-transform: uppercase;
+    padding: 12px;
+    margin: 8px 0;
+    border-radius: 8px;
+    width: calc(100% - 20px); /* Default button width */
+    transition: all 0.3s ease;
 }
 
 button:hover {
-  background: #00e0b5;
+    background-color: var(--secondary-purple);
+    transform: translateY(-2px);
 }
 
-/* 🚀 Hidden Utility */
-.hidden {
-  display: none !important;
+button:active {
+    transform: translateY(0);
 }
 
-/* 🧍 User List */
+button:disabled {
+    background-color: #cccccc;
+    cursor: not-allowed;
+    transform: none;
+}
+
+/* Specific Button Styles */
+.small-button {
+    width: auto; /* Override default button width */
+    padding: 8px 15px;
+    font-size: 0.85em;
+    border-radius: 5px;
+    margin: 5px;
+}
+
+.control-button {
+    width: auto;
+    padding: 10px 20px;
+    font-size: 0.9em;
+    border-radius: 25px; /* Pill-shaped buttons */
+}
+
+.modal-button {
+    width: auto;
+    padding: 12px 28px;
+    border-radius: 25px;
+    font-size: 1em;
+}
+
+/* Color variations for buttons */
+.success { background-color: var(--success-green); }
+.success:hover { background-color: #22c55e; } /* Darker shade on hover */
+.danger { background-color: var(--danger-red); }
+.danger:hover { background-color: #dc2626; } /* Darker shade on hover */
+.warning { background-color: var(--warning-orange); }
+.warning:hover { background-color: #d97706; } /* Darker shade on hover */
+
+
+/* Status Message */
+#status-message {
+    position: absolute;
+    top: 20px;
+    left: 50%;
+    transform: translateX(-50%);
+    font-size: 0.85em;
+    color: var(--text-dark);
+    background-color: var(--background-light);
+    padding: 8px 15px;
+    border-radius: 5px;
+    box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
+    transition: all 0.3s ease;
+    white-space: nowrap; /* Prevent wrapping for better appearance */
+    z-index: 500; /* Ensure it's above other elements if needed */
+}
+
+/* Logged-in User Info */
+.logged-info {
+    display: flex;
+    justify-content: center; /* Center horizontally */
+    align-items: center;
+    gap: 10px; /* Space between text and button */
+    margin-bottom: 20px;
+}
+#logged-username {
+    font-weight: 600;
+    color: var(--primary-blue);
+}
+
+/* User List */
 #user-list {
-  list-style: none;
-  padding: 0;
-  margin: 10px 0;
+    list-style: none;
+    padding: 0;
+    text-align: left;
+    margin-top: 25px;
+    max-height: 250px;
+    overflow-y: auto;
+    border: 1px solid var(--border-light);
+    border-radius: 8px;
+    background-color: var(--background-light);
 }
 
 .user-item {
-  background: #0b121a;
-  padding: 10px;
-  margin: 6px 0;
-  border-radius: 8px;
-  cursor: pointer;
-  transition: 0.2s;
-  border: 1px solid transparent;
+    padding: 12px 18px;
+    border-bottom: 1px solid var(--border-light);
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    font-weight: 400;
 }
 
-.user-item:hover {
-  border-color: #00ffc8;
-  background: #0f1d24;
+.user-item:last-child {
+    border-bottom: none;
 }
 
-.user-item.in-call {
-  color: #ff6666;
+.user-item.available {
+    color: var(--text-dark);
+    cursor: pointer;
 }
 
-/* ⏱️ Call Timer */
-#call-timer {
-  font-size: 1rem;
-  color: #ffb300;
-  font-weight: 600;
-  margin-top: 10px;
+.user-item.available:hover {
+    background-color: rgba(var(--primary-blue), 0.1);
 }
 
-/* 🔴 Call Controls */
+.user-item.busy {
+    color: #999;
+    background-color: #f0f0f0;
+    cursor: not-allowed;
+    opacity: 0.7;
+}
+
+.user-item .status-info {
+    display: flex;
+    align-items: center;
+    gap: 5px; /* Space between dot and status text */
+    font-size: 0.9em;
+    color: #666; /* Default status text color */
+}
+
+.user-item.available .status-info {
+    color: var(--success-green);
+}
+
+.user-item.busy .status-info {
+    color: var(--warning-orange);
+}
+
+.user-item .status-dot {
+    width: 8px;
+    height: 8px;
+    border-radius: 50%;
+    display: inline-block;
+    flex-shrink: 0; /* Prevent dot from shrinking */
+}
+
+/* Call Controls */
 #call-controls {
-  margin-top: 15px;
+    margin-top: 30px;
+    display: flex;
+    gap: 10px;
+    justify-content: center;
+    flex-wrap: wrap;
 }
 
-#hangupButton {
-  background: #ff4b4b;
-  color: white;
-  font-weight: bold;
+/* Call Timer */
+#call-timer {
+    font-size: 2em;
+    font-weight: 700;
+    color: var(--primary-blue);
+    margin-top: 25px;
 }
 
-#hangupButton:hover {
-  background: #ff2d2d;
-}
-
-#muteButton {
-  background: #00ffc8;
-  color: #000;
-}
-
-#muteButton:hover {
-  background: #00e0b5;
-}
-
-#unmuteButton {
-  background: #00ffc8;
-  color: #000;
-}
-
-#unmuteButton:hover {
-  background: #00e0b5;
-}
-
-/* 📞 Modal (Incoming Call) */
+/* Incoming Call Modal */
 #incoming-call-modal {
-  position: fixed;
-  top: 0;
-  left: 0;
-  width: 100%;
-  height: 100%;
-  background: rgba(10, 15, 20, 0.9);
-  display: flex;
-  justify-content: center;
-  align-items: center;
-  z-index: 10;
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background-color: rgba(0, 0, 0, 0.7);
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    z-index: 1000;
 }
 
 #incoming-call-content {
-  background: #0f1a23;
-  border: 2px solid #00ffc8;
-  border-radius: 12px;
-  padding: 25px;
-  width: 90%;
-  max-width: 300px;
-  text-align: center;
-  animation: fadeIn 0.3s ease-in-out;
+    background-color: var(--card-background);
+    padding: 40px;
+    border-radius: 16px;
+    box-shadow: 0 10px 30px rgba(0, 0, 0, 0.2);
+    text-align: center;
+    max-width: 400px;
+    width: 90%;
+    animation: fadeIn 0.5s ease-out;
+}
+
+#incoming-caller-name {
+    font-size: 1.8em;
+    color: var(--primary-blue);
+    margin-bottom: 25px;
+    font-weight: 600;
 }
 
 #modal-buttons {
-  display: flex;
-  justify-content: space-around;
-  margin-top: 15px;
+    display: flex;
+    gap: 15px;
+    justify-content: center;
+    margin-top: 30px;
+    flex-wrap: wrap; /* Allow buttons to wrap on small screens */
 }
 
-#acceptCallButton {
-  background: #00ffc8;
-  color: #000;
-  border-radius: 8px;
-  padding: 10px 20px;
+/* Footer */
+footer {
+    margin-top: auto;
+    padding-top: 20px;
+    color: var(--text-light);
+    font-size: 0.9em;
+    text-shadow: 1px 1px 2px rgba(0, 0, 0, 0.1);
 }
 
-#acceptCallButton:hover {
-  background: #00e0b5;
-}
-
-#rejectCallButton {
-  background: #ff4b4b;
-  color: #fff;
-  border-radius: 8px;
-  padding: 10px 20px;
-}
-
-#rejectCallButton:hover {
-  background: #ff2d2d;
-}
-
+/* Animations */
 @keyframes fadeIn {
-  from { opacity: 0; transform: translateY(-10px); }
-  to { opacity: 1; transform: translateY(0); }
+    from { opacity: 0; transform: scale(0.9); }
+    to { opacity: 1; transform: scale(1); }
 }
 
-/* 🎧 Hidden Audio */
-.hidden-media {
-  display: none;
-}
-
-/* 📱 Responsiveness */
+/* Media Queries for Responsiveness */
 @media (max-width: 600px) {
-  h1 { font-size: 1.6rem; }
-  .container { padding: 20px; }
-  input { width: 90%; }
-  button { padding: 8px 14px; }
-  #incoming-call-content { padding: 20px; }
+    body {
+        padding: 10px;
+        justify-content: flex-start; /* Align to top on small screens */
+    }
+    .container {
+        padding: 25px;
+        margin: 15px 0;
+        width: 95%;
+    }
+    h1 {
+        font-size: 2em;
+    }
+    #status-message {
+        position: static; /* Remove absolute positioning */
+        transform: none;
+        margin-bottom: 15px;
+        box-shadow: none;
+        background-color: transparent;
+        padding: 0;
+        text-align: center;
+        width: 100%;
+    }
+    .logged-info {
+        flex-direction: column;
+        gap: 5px;
+    }
+    .logged-info #logoutButton {
+        width: auto;
+        padding: 5px 10px;
+        font-size: 0.75em;
+    }
+    #call-timer {
+        font-size: 1.8em;
+    }
+    button, input[type="text"] {
+        width: 100%; /* Full width for all buttons/inputs on small screens */
+        margin: 5px 0;
+    }
+    .control-button, .modal-button {
+        width: 100%;
+    }
+    #modal-buttons {
+        flex-direction: column;
+        gap: 10px;
+    }
+    .user-item {
+        flex-direction: column; /* Stack user name and status */
+        align-items: flex-start;
+        padding: 10px;
+    }
+    .user-item .status-info {
+        margin-top: 5px;
+    }
 }

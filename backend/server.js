@@ -1,170 +1,197 @@
-// ==============================
-// EchoLink+ Robust Signaling Server
-// ==============================
+const wsUrl = 'wss://echolinkplus-backend.onrender.com';
+let ws, localStream, peerConnection, currentCall = null, username;
+let callStartTime, timerInterval;
 
-const express = require("express");
-const http = require("http");
-const WebSocket = require("ws");
-const cors = require("cors");
+const servers = { iceServers: [{ urls: "stun:stun.l.google.com:19302" }] };
 
-// -------------------------------
-// Setup HTTP + WebSocket servers
-// -------------------------------
-const PORT = process.env.PORT || 8080;
-const app = express();
-app.use(cors());
-app.use(express.json());
+// Elements
+const loginView = document.getElementById("login-view");
+const appView = document.getElementById("app-view");
+const statusMessage = document.getElementById("status-message");
+const loggedUser = document.getElementById("logged-username");
+const userList = document.getElementById("user-list");
+const ringtone = document.getElementById("ringtone");
+const timerDisplay = document.getElementById("call-timer");
 
-// Simple health check route
-app.get("/", (req, res) => {
-  res.status(200).send("✅ EchoLink+ Signaling Server is running.");
+// Persistent Login
+window.addEventListener("load", () => {
+  const savedUser = localStorage.getItem("echoname");
+  if (savedUser) {
+    document.getElementById("usernameInput").value = savedUser;
+    handleLogin();
+  }
 });
 
-const server = http.createServer(app);
-const wss = new WebSocket.Server({ server });
+function connectWebSocket() {
+  ws = new WebSocket(wsUrl);
 
-// Store connected clients
-const clients = {}; // { username: WebSocket }
+  ws.onopen = () => {
+    statusMessage.textContent = "Connected to Echo-Link Server.";
+    if (username) ws.send(JSON.stringify({ type: "login", username }));
+  };
 
-// -------------------------------
-// Helper Functions
-// -------------------------------
-function sendTo(username, message) {
-  const ws = clients[username];
-  if (ws && ws.readyState === WebSocket.OPEN) {
-    ws.send(JSON.stringify(message));
-  }
-}
-
-function broadcastUserList() {
-  const userList = Object.keys(clients).map((u) => ({
-    username: u,
-    status: clients[u].status || "Available",
-  }));
-
-  const payload = JSON.stringify({ type: "userList", users: userList });
-
-  for (const user of Object.values(clients)) {
-    if (user.readyState === WebSocket.OPEN) {
-      user.send(payload);
-    }
-  }
-}
-
-// -------------------------------
-// WebSocket Event Handling
-// -------------------------------
-wss.on("connection", (ws) => {
-  ws.username = null;
-  ws.status = "Available";
-  ws.calling = null;
-
-  ws.on("message", (msg) => {
-    let data;
-    try {
-      data = JSON.parse(msg);
-    } catch (err) {
-      console.error("❌ Invalid JSON:", msg);
-      return;
-    }
-
-    // Ignore unlogged users except login attempts
-    if (!ws.username && data.type !== "login") return;
-
+  ws.onmessage = (msg) => {
+    const data = JSON.parse(msg.data);
     switch (data.type) {
-      // ---------------------------
-      // LOGIN HANDLER
-      // ---------------------------
-      case "login":
-        const username = data.username?.trim();
-        if (!username) {
-          ws.send(JSON.stringify({ type: "loginFailure", message: "Invalid username." }));
-          return;
-        }
-
-        if (clients[username]) {
-          ws.send(JSON.stringify({ type: "loginFailure", message: "Username already taken." }));
-          return;
-        }
-
-        ws.username = username;
-        ws.status = "Available";
-        clients[username] = ws;
-
-        ws.send(JSON.stringify({ type: "loginSuccess", message: `Welcome ${username}` }));
-        broadcastUserList();
-        console.log(`✅ ${username} connected`);
+      case "loginSuccess":
+        showAppView();
         break;
-
-      // ---------------------------
-      // OFFER / ANSWER / ICE
-      // ---------------------------
+      case "loginFailure":
+        alert(data.message);
+        break;
+      case "userList":
+        updateUserList(data.users);
+        break;
       case "offer":
-        if (clients[data.target]) {
-          ws.status = "Busy";
-          clients[data.target].status = "Ringing";
-          sendTo(data.target, {
-            type: "offer",
-            offer: data.offer,
-            caller: ws.username,
-          });
-          broadcastUserList();
-        }
+        onIncomingCall(data.caller, data.offer);
         break;
-
       case "answer":
-        if (clients[data.target]) {
-          sendTo(data.target, {
-            type: "answer",
-            answer: data.answer,
-            caller: ws.username,
-          });
-        }
+        peerConnection.setRemoteDescription(new RTCSessionDescription(data.answer));
         break;
-
       case "iceCandidate":
-        if (clients[data.target]) {
-          sendTo(data.target, {
-            type: "iceCandidate",
-            candidate: data.candidate,
-            caller: ws.username,
-          });
-        }
+        peerConnection.addIceCandidate(new RTCIceCandidate(data.candidate));
         break;
-
-      // ---------------------------
-      // REJECT / HANGUP
-      // ---------------------------
       case "reject":
       case "hangup":
-        if (clients[data.target]) {
-          sendTo(data.target, { type: data.type, caller: ws.username });
-          clients[data.target].status = "Available";
-        }
-        ws.status = "Available";
-        broadcastUserList();
+        endCall();
         break;
+    }
+  };
 
-      // ---------------------------
-      // UNKNOWN MESSAGES
-      // ---------------------------
-      default:
-        console.warn("⚠️ Unknown message type:", data.type);
+  ws.onclose = () => {
+    statusMessage.textContent = "Disconnected. Reconnecting...";
+    setTimeout(connectWebSocket, 2000);
+  };
+
+  ws.onerror = (err) => console.error("WebSocket Error:", err);
+}
+
+function handleLogin() {
+  username = document.getElementById("usernameInput").value.trim();
+  if (!username) return alert("Enter a valid Echo-Name.");
+
+  localStorage.setItem("echoname", username);
+  connectWebSocket();
+}
+
+function showAppView() {
+  loginView.classList.add("hidden");
+  appView.classList.remove("hidden");
+  loggedUser.textContent = username;
+  statusMessage.textContent = `Logged in as ${username}`;
+}
+
+function updateUserList(users) {
+  userList.innerHTML = "";
+  users.forEach(u => {
+    if (u.username !== username) {
+      const li = document.createElement("li");
+      li.textContent = `${u.username}${u.status !== "Available" ? " (in call)" : ""}`;
+      li.className = "user-item";
+      if (u.status === "Available") {
+        li.onclick = () => callUser(u.username);
+      } else {
+        li.style.opacity = 0.5;
+      }
+      userList.appendChild(li);
     }
   });
+}
 
-  ws.on("close", () => {
-    if (ws.username && clients[ws.username]) {
-      delete clients[ws.username];
-      broadcastUserList();
-      console.log(`❌ ${ws.username} disconnected`);
+async function callUser(target) {
+  currentCall = target;
+  peerConnection = createPeerConnection(target);
+
+  localStream = await navigator.mediaDevices.getUserMedia({ audio: true });
+  localStream.getTracks().forEach(track => peerConnection.addTrack(track, localStream));
+
+  const offer = await peerConnection.createOffer();
+  await peerConnection.setLocalDescription(offer);
+
+  ws.send(JSON.stringify({ type: "offer", target, offer }));
+  statusMessage.textContent = `Calling ${target}...`;
+}
+
+function onIncomingCall(caller, offer) {
+  currentCall = caller;
+  document.getElementById("incoming-caller-name").textContent = `Incoming call from ${caller}`;
+  document.getElementById("incoming-call-modal").classList.remove("hidden");
+  ringtone.play();
+
+  peerConnection = createPeerConnection(caller);
+  peerConnection.setRemoteDescription(new RTCSessionDescription(offer));
+}
+
+async function acceptCall() {
+  ringtone.pause();
+  document.getElementById("incoming-call-modal").classList.add("hidden");
+
+  localStream = await navigator.mediaDevices.getUserMedia({ audio: true });
+  localStream.getTracks().forEach(track => peerConnection.addTrack(track, localStream));
+
+  const answer = await peerConnection.createAnswer();
+  await peerConnection.setLocalDescription(answer);
+
+  ws.send(JSON.stringify({ type: "answer", target: currentCall, answer }));
+  startTimer();
+}
+
+function rejectCall() {
+  ringtone.pause();
+  document.getElementById("incoming-call-modal").classList.add("hidden");
+  ws.send(JSON.stringify({ type: "reject", target: currentCall }));
+  currentCall = null;
+}
+
+function createPeerConnection(target) {
+  const pc = new RTCPeerConnection(servers);
+
+  pc.onicecandidate = (e) => {
+    if (e.candidate) {
+      ws.send(JSON.stringify({ type: "iceCandidate", target, candidate: e.candidate }));
     }
-  });
-});
+  };
 
-// -------------------------------
-// Start Server
-// -------------------------------
-server.listen(PORT, () => {
-  console.log(`🚀 EchoLink+ Signaling Server running on port ${PORT}`);
-});
+  pc.ontrack = (e) => {
+    document.getElementById("remoteAudio").srcObject = e.streams[0];
+    startTimer();
+  };
+
+  return pc;
+}
+
+function hangUp() {
+  if (currentCall) {
+    ws.send(JSON.stringify({ type: "hangup", target: currentCall }));
+  }
+  endCall();
+}
+
+function endCall() {
+  if (peerConnection) peerConnection.close();
+  peerConnection = null;
+  currentCall = null;
+  stopTimer();
+  statusMessage.textContent = "Call ended.";
+}
+
+function startTimer() {
+  const callControls = document.getElementById("call-controls");
+  callControls.classList.remove("hidden");
+  timerDisplay.classList.remove("hidden");
+
+  callStartTime = Date.now();
+  timerInterval = setInterval(() => {
+    const elapsed = Math.floor((Date.now() - callStartTime) / 1000);
+    const m = String(Math.floor(elapsed / 60)).padStart(2, "0");
+    const s = String(elapsed % 60).padStart(2, "0");
+    timerDisplay.textContent = `${m}:${s}`;
+  }, 1000);
+}
+
+function stopTimer() {
+  clearInterval(timerInterval);
+  timerDisplay.textContent = "00:00";
+  timerDisplay.classList.add("hidden");
+  document.getElementById("call-controls").classList.add("hidden");
+}

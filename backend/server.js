@@ -1,66 +1,72 @@
-// backend/server.js
-
 const WebSocket = require("ws");
-const http = require("http");
 
 const PORT = process.env.PORT || 3000;
-const server = http.createServer();
-const wss = new WebSocket.Server({ server });
+const server = new WebSocket.Server({ port: PORT });
 
-const clients = {}; // { username: ws }
+const clients = {}; // username -> WebSocket mapping
 
-wss.on("connection", (ws) => {
-  console.log("Client connected");
+console.log(`✅ WebSocket signaling server running on port ${PORT}`);
 
-  ws.on("message", (msg) => {
+server.on("connection", (ws) => {
+  console.log("🟢 New connection established");
+
+  ws.on("message", (message) => {
     let data;
     try {
-      data = JSON.parse(msg);
+      data = JSON.parse(message);
     } catch (e) {
-      console.error("Invalid JSON:", e);
+      console.error("Invalid JSON:", message);
       return;
     }
 
     switch (data.type) {
       case "login":
-        if (clients[data.username]) {
-          ws.send(
-            JSON.stringify({
-              type: "login",
-              success: false,
-              message: "Username already taken",
-            })
-          );
-          return;
-        }
-
+        // store user
         ws.username = data.username;
         clients[data.username] = ws;
-        console.log(`User logged in: ${data.username}`);
+        console.log(`👤 ${data.username} logged in`);
         broadcastUserList();
         break;
 
       case "offer":
       case "answer":
-      case "iceCandidate":
+      case "candidate":
         const target = clients[data.target];
-        if (target) target.send(JSON.stringify(data));
+        if (target) {
+          target.send(JSON.stringify(data));
+        }
+        break;
+
+      case "leave":
+        handleDisconnect(ws);
         break;
 
       default:
-        console.warn("Unknown message type:", data.type);
+        console.log("Unknown message type:", data.type);
     }
   });
 
   ws.on("close", () => {
-    if (ws.username) {
-      console.log(`User disconnected: ${ws.username}`);
-      delete clients[ws.username];
-      broadcastUserList();
-    }
+    handleDisconnect(ws);
   });
 });
 
 function broadcastUserList() {
-  const users = Object.keys(clients);
-  const msg = JSON.stringify({ type: "userList", users
+  const userList = Object.keys(clients);
+  const message = {
+    type: "update-user-list",
+    users: userList,
+  };
+  const payload = JSON.stringify(message);
+  for (const user in clients) {
+    clients[user].send(payload);
+  }
+}
+
+function handleDisconnect(ws) {
+  if (ws.username && clients[ws.username]) {
+    console.log(`🔴 ${ws.username} disconnected`);
+    delete clients[ws.username];
+    broadcastUserList();
+  }
+}

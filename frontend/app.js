@@ -1,109 +1,64 @@
-// frontend/app.js
-
+let ws;
 let localStream;
 let peerConnection;
-let ws;
 let username;
 let targetUser;
 
-const servers = {
-  iceServers: [
-    { urls: "stun:stun.l.google.com:19302" },
-    { urls: "stun:stun1.l.google.com:19302" },
-  ],
-};
+const wsUrl = "wss://echolinkplus-backend.onrender.com"; // your Render backend
 
-async function initMedia() {
-  try {
-    localStream = await navigator.mediaDevices.getUserMedia({ audio: true });
-    document.getElementById("localAudio").srcObject = localStream;
-  } catch (err) {
-    console.error("Media error:", err);
+function handleLogin() {
+  username = document.getElementById("username").value.trim();
+  if (!username) {
+    alert("Enter a username");
+    return;
   }
-}
 
-function connectWebSocket() {
-  // Use your Render backend domain here:
-  ws = new WebSocket("wss://echolinkplus-backend.onrender.com");
+  ws = new WebSocket(wsUrl);
 
   ws.onopen = () => {
     console.log("Connected to signaling server");
+    ws.send(JSON.stringify({ type: "login", username }));
   };
 
   ws.onmessage = (msg) => {
     const data = JSON.parse(msg.data);
-    console.log("Received:", data);
-
     switch (data.type) {
-      case "userList":
       case "update-user-list":
-        renderUserList(
-          data.users.map((u) => (typeof u === "string" ? u : u.username))
-        );
+        renderUserList(data.users);
         break;
-
       case "offer":
-        handleOffer(data.offer, data.from);
+        handleOffer(data.offer, data.username);
         break;
-
       case "answer":
         handleAnswer(data.answer);
         break;
-
-      case "iceCandidate":
+      case "candidate":
         handleCandidate(data.candidate);
         break;
-
-      default:
-        console.warn("Unknown message type:", data.type);
     }
   };
 
-  ws.onerror = (err) => console.error("WebSocket error:", err);
-}
-
-function handleLogin() {
-  username = document.getElementById("username").value.trim();
-  if (!username) return alert("Enter a username first!");
-
-  ws.send(JSON.stringify({ type: "login", username }));
+  ws.onerror = (err) => {
+    console.error("WebSocket error:", err);
+  };
 }
 
 function renderUserList(users) {
-  const list = document.getElementById("users");
+  const list = document.getElementById("userList");
   list.innerHTML = "";
-  users
-    .filter((u) => u !== username)
-    .forEach((user) => {
+  users.forEach((user) => {
+    if (user !== username) {
       const li = document.createElement("li");
       li.textContent = user;
-      li.onclick = () => initiateCall(user);
+      li.onclick = () => startCall(user);
       list.appendChild(li);
-    });
+    }
+  });
 }
 
-async function initiateCall(user) {
+async function startCall(user) {
   targetUser = user;
-  peerConnection = new RTCPeerConnection(servers);
-  localStream.getTracks().forEach((track) =>
-    peerConnection.addTrack(track, localStream)
-  );
-
-  peerConnection.ontrack = (event) => {
-    document.getElementById("remoteAudio").srcObject = event.streams[0];
-  };
-
-  peerConnection.onicecandidate = (event) => {
-    if (event.candidate) {
-      ws.send(
-        JSON.stringify({
-          type: "iceCandidate",
-          candidate: event.candidate,
-          target: targetUser,
-        })
-      );
-    }
-  };
+  await setupPeerConnection();
 
   const offer = await peerConnection.createOffer();
   await peerConnection.setLocalDescription(offer);
@@ -111,35 +66,16 @@ async function initiateCall(user) {
   ws.send(
     JSON.stringify({
       type: "offer",
-      offer: offer,
+      offer,
       target: targetUser,
-      from: username,
+      username,
     })
   );
 }
 
-async function handleOffer(offer, from) {
-  targetUser = from;
-  peerConnection = new RTCPeerConnection(servers);
-  localStream.getTracks().forEach((track) =>
-    peerConnection.addTrack(track, localStream)
-  );
-
-  peerConnection.ontrack = (event) => {
-    document.getElementById("remoteAudio").srcObject = event.streams[0];
-  };
-
-  peerConnection.onicecandidate = (event) => {
-    if (event.candidate) {
-      ws.send(
-        JSON.stringify({
-          type: "iceCandidate",
-          candidate: event.candidate,
-          target: targetUser,
-        })
-      );
-    }
-  };
+async function handleOffer(offer, user) {
+  targetUser = user;
+  await setupPeerConnection();
 
   await peerConnection.setRemoteDescription(new RTCSessionDescription(offer));
   const answer = await peerConnection.createAnswer();
@@ -148,24 +84,44 @@ async function handleOffer(offer, from) {
   ws.send(
     JSON.stringify({
       type: "answer",
-      answer: answer,
+      answer,
       target: targetUser,
+      username,
     })
   );
 }
 
-function handleAnswer(answer) {
-  peerConnection.setRemoteDescription(new RTCSessionDescription(answer));
+async function handleAnswer(answer) {
+  await peerConnection.setRemoteDescription(new RTCSessionDescription(answer));
 }
 
 function handleCandidate(candidate) {
   peerConnection.addIceCandidate(new RTCIceCandidate(candidate));
 }
 
-window.addEventListener("load", async () => {
-  await initMedia();
-  connectWebSocket();
-  document
-    .getElementById("loginBtn")
-    .addEventListener("click", handleLogin);
-});
+async function setupPeerConnection() {
+  peerConnection = new RTCPeerConnection();
+
+  peerConnection.onicecandidate = ({ candidate }) => {
+    if (candidate) {
+      ws.send(
+        JSON.stringify({
+          type: "candidate",
+          candidate,
+          target: targetUser,
+          username,
+        })
+      );
+    }
+  };
+
+  peerConnection.ontrack = (event) => {
+    document.getElementById("remoteAudio").srcObject = event.streams[0];
+  };
+
+  localStream = await navigator.mediaDevices.getUserMedia({ audio: true });
+  localStream.getTracks().forEach((track) => peerConnection.addTrack(track, localStream));
+  document.getElementById("localAudio").srcObject = localStream;
+}
+
+document.getElementById("loginBtn").onclick = handleLogin;

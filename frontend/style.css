@@ -20,7 +20,10 @@ body {
   width: 95%;
   max-width: 500px;
   text-align: center;
-  padding: 20px;
+  padding: 25px;
+  background: #111a23;
+  border-radius: 16px;
+  box-shadow: 0 0 25px rgba(0, 255, 200, 0.2);
 }
 
 /* 🧩 Header */
@@ -30,8 +33,8 @@ h1 {
   margin-bottom: 15px;
 }
 
-/* 💬 Status Box */
-.status-box {
+/* 💬 Status Message */
+#status-message {
   background: #162029;
   border: 1px solid #00ffc8;
   border-radius: 10px;
@@ -40,20 +43,6 @@ h1 {
   color: #00ffc8;
   margin-bottom: 20px;
   transition: 0.3s;
-}
-
-/* 🪪 Card */
-.card {
-  background: #111a23;
-  border-radius: 16px;
-  box-shadow: 0 0 20px rgba(0, 255, 200, 0.1);
-  padding: 20px;
-  margin-top: 10px;
-  transition: transform 0.2s ease;
-}
-
-.card:hover {
-  transform: scale(1.01);
 }
 
 /* ✍️ Input + Buttons */
@@ -87,46 +76,11 @@ button:hover {
   display: none !important;
 }
 
-/* 📞 Call Bar */
-.call-bar {
-  background: #0d161d;
-  padding: 12px;
-  border-radius: 10px;
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  color: #00ffc8;
-  margin-bottom: 10px;
-}
-
-.mic-status {
-  font-size: 1.3rem;
-  transition: 0.3s;
-}
-
-.mic-status.active {
-  color: #00ffc8;
-}
-
-.mic-status.inactive {
-  color: #555;
-}
-
-/* ⏱️ Timer */
-.timer {
-  font-size: 0.9rem;
-  color: #ffb300;
-  font-weight: 600;
-}
-
 /* 🧍 User List */
-.user-list-container h2 {
-  margin-bottom: 10px;
-}
-
 #user-list {
   list-style: none;
   padding: 0;
+  margin: 10px 0;
 }
 
 .user-item {
@@ -148,23 +102,49 @@ button:hover {
   color: #ff6666;
 }
 
+/* ⏱️ Call Timer */
+#call-timer {
+  font-size: 1rem;
+  color: #ffb300;
+  font-weight: 600;
+  margin-top: 10px;
+}
+
 /* 🔴 Call Controls */
-.call-controls {
+#call-controls {
   margin-top: 15px;
 }
 
-.hangup-btn {
+#hangupButton {
   background: #ff4b4b;
   color: white;
   font-weight: bold;
 }
 
-.hangup-btn:hover {
+#hangupButton:hover {
   background: #ff2d2d;
 }
 
+#muteButton {
+  background: #00ffc8;
+  color: #000;
+}
+
+#muteButton:hover {
+  background: #00e0b5;
+}
+
+#unmuteButton {
+  background: #00ffc8;
+  color: #000;
+}
+
+#unmuteButton:hover {
+  background: #00e0b5;
+}
+
 /* 📞 Modal (Incoming Call) */
-.modal {
+#incoming-call-modal {
   position: fixed;
   top: 0;
   left: 0;
@@ -177,7 +157,7 @@ button:hover {
   z-index: 10;
 }
 
-.modal-content {
+#incoming-call-content {
   background: #0f1a23;
   border: 2px solid #00ffc8;
   border-radius: 12px;
@@ -188,20 +168,32 @@ button:hover {
   animation: fadeIn 0.3s ease-in-out;
 }
 
-.modal-buttons {
+#modal-buttons {
   display: flex;
   justify-content: space-around;
   margin-top: 15px;
 }
 
-.accept-btn {
+#acceptCallButton {
   background: #00ffc8;
   color: #000;
+  border-radius: 8px;
+  padding: 10px 20px;
 }
 
-.reject-btn {
+#acceptCallButton:hover {
+  background: #00e0b5;
+}
+
+#rejectCallButton {
   background: #ff4b4b;
   color: #fff;
+  border-radius: 8px;
+  padding: 10px 20px;
+}
+
+#rejectCallButton:hover {
+  background: #ff2d2d;
 }
 
 @keyframes fadeIn {
@@ -217,7 +209,8 @@ button:hover {
 /* 📱 Responsiveness */
 @media (max-width: 600px) {
   h1 { font-size: 1.6rem; }
-  .card { padding: 15px; }
+  .container { padding: 20px; }
   input { width: 90%; }
   button { padding: 8px 14px; }
+  #incoming-call-content { padding: 20px; }
 }

@@ -1,240 +1,295 @@
-// app.js (Client-Side WebRTC Application)
+// backend/server.js
+const express = require('express');
+const http = require('http');
+const { WebSocketServer } = require('ws');
 
-// --- Configuration ---
-const wsUrl = 'wss://echolinkplus-backend.onrender.com';
-let ws, localStream = null, peerConnection = null, currentCallTarget = null, username = '';
-let callStartTime = null, timerInterval = null;
+const PORT = process.env.PORT || 8080;
+const app = express();
 
-// --- STUN/TURN Configuration ---
-const iceServers = {
-  iceServers: [
-    { urls: 'stun:stun.l.google.com:19302' },
-    { urls: 'stun:stun1.l.google.com:19302' }
-  ],
-  iceTransportPolicy: 'all'
+// --- CONSTANTS FOR STATUS ---
+const STATUS = {
+  AVAILABLE: 'Available',
+  RINGING: 'Ringing',
+  IN_CALL: 'In Call'
 };
+// -----------------------------
 
-// --- DOM Elements ---
-const loginView = document.getElementById("login-view");
-const appView = document.getElementById("app-view");
-const statusMessage = document.getElementById("status-message");
-const loggedUser = document.getElementById("logged-username");
-const userList = document.getElementById("user-list");
-const ringtone = document.getElementById("ringtone");
-const remoteAudio = document.getElementById("remoteAudio");
-const localAudio = document.getElementById("localAudio");
-const callControls = document.getElementById("call-controls");
-const incomingCallModal = document.getElementById("incoming-call-modal");
-const incomingCallerName = document.getElementById("incoming-caller-name");
-const callTimerDisplay = document.getElementById("call-timer");
+// Basic health check for Render / uptime monitors
+app.get('/', (req, res) => res.send('EchoLink+ signaling server OK'));
 
-// --- Persistent Login ---
-window.addEventListener("load", () => {
-  const savedUser = localStorage.getItem("echoname");
-  if (savedUser) {
-    document.getElementById("usernameInput").value = savedUser;
-    handleLogin(savedUser);
-  } else {
-    connectWebSocket();
+const server = http.createServer(app);
+const wss = new WebSocketServer({ server });
+
+// users: Map<username, { ws, status, peer }>
+const users = new Map();
+
+// --- HELPER FUNCTIONS ---
+
+function broadcastUserList() {
+  const list = Array.from(users.entries()).map(([username, data]) => ({
+    username,
+    status: data.status || STATUS.AVAILABLE
+  }));
+  const payload = JSON.stringify({ type: 'userList', users: list });
+  for (const [, u] of users) {
+    // ⚠️ Note: We rely on the ws object being the actual live connection.
+    if (u.ws && u.ws.readyState === u.ws.OPEN) {
+      u.ws.send(payload);
+    }
   }
-});
-
-// --- WebSocket ---
-function connectWebSocket() {
-  if (ws && (ws.readyState === WebSocket.OPEN || ws.readyState === WebSocket.CONNECTING)) return;
-
-  ws = new WebSocket(wsUrl);
-
-  ws.onopen = () => {
-    console.log("✅ WebSocket connected.");
-    statusMessage.textContent = "Connected to EchoLink+ Server.";
-    if (username) sendSignalingMessage({ type: "login", username });
-  };
-
-  ws.onmessage = async (event) => {
-    let data;
-    try { data = JSON.parse(event.data); } 
-    catch { return console.error("Invalid JSON:", event.data); }
-
-    switch (data.type) {
-      case "loginSuccess":
-        username = data.username;
-        localStorage.setItem("echoname", username);
-        showAppView();
-        break;
-      case "loginFailure":
-        alert(`Login failed: ${data.message}`);
-        username = '';
-        showLoginView();
-        break;
-      case "userList":
-        updateUserList(data.users);
-        break;
-      case "offer":
-        if (currentCallTarget) {
-          sendSignalingMessage({ type: "reject", target: data.caller, message: "Busy" });
-          return;
-        }
-        await onIncomingCall(data.caller, data.offer);
-        break;
-      case "answer":
-        if (!peerConnection || !currentCallTarget) { endCall(false); return; }
-        await peerConnection.setRemoteDescription(new RTCSessionDescription(data.answer));
-        startCallTimer();
-        break;
-      case "iceCandidate":
-        if (peerConnection && data.candidate) {
-          try { await peerConnection.addIceCandidate(new RTCIceCandidate(data.candidate)); } 
-          catch (err) { console.warn("ICE candidate add error:", err); }
-        }
-        break;
-      case "reject":
-        alert(`Call rejected: ${data.message || 'No reason given.'}`);
-        endCall(false);
-        break;
-      case "hangup":
-        alert(`${data.caller || 'Peer'} ended the call.`);
-        endCall(false);
-        break;
-      case "error":
-        alert(`Server Error: ${data.message}`);
-        statusMessage.textContent = `Server Error: ${data.message}`;
-        break;
-      default:
-        console.warn("Unknown message type:", data.type);
-    }
-  };
-
-  ws.onclose = () => {
-    statusMessage.textContent = "Disconnected. Reconnecting...";
-    endCall(false);
-    setTimeout(connectWebSocket, 3000);
-  };
-
-  ws.onerror = (err) => {
-    console.error("WebSocket error:", err);
-    statusMessage.textContent = "WebSocket error.";
-  };
 }
 
-function sendSignalingMessage(message) {
-  if (ws && ws.readyState === WebSocket.OPEN) ws.send(JSON.stringify(message));
-  else console.warn("Cannot send, WebSocket not open.");
+function safeSend(ws, obj) {
+  try {
+    if (ws && ws.readyState === ws.OPEN) ws.send(JSON.stringify(obj));
+  } catch (e) {
+    // Error often happens if sending during a close event; minor log for tracking
+    console.warn('safeSend failed (likely during closing)', e.message);
+  }
 }
 
-// --- UI ---
-function handleLogin(savedUser = null) {
-  const inputUsername = savedUser || document.getElementById("usernameInput").value.trim();
-  if (!inputUsername) { alert("Enter a valid Echo-Name."); return; }
-  username = inputUsername;
-  if (!ws || ws.readyState !== WebSocket.OPEN) connectWebSocket();
-  else sendSignalingMessage({ type: "login", username });
-}
-
-function showAppView() { loginView.classList.add("hidden"); appView.classList.remove("hidden"); loggedUser.textContent = username; }
-function showLoginView() { loginView.classList.remove("hidden"); appView.classList.add("hidden"); loggedUser.textContent = ''; username=''; localStorage.removeItem("echoname"); document.getElementById("usernameInput").value=''; }
-
-function updateUserList(users) {
-  userList.innerHTML = "";
-  users.forEach(user => {
-    if (user.username === username) return;
-    const li = document.createElement("li");
-    li.textContent = `${user.username}${user.status!=="Available"?" (Busy)":""}`;
-    li.className = "user-item";
-    if (user.status==="Available") {
-      li.classList.add("available");
-      li.onclick = ()=>{ if(!currentCallTarget) callUser(user.username); else alert(`Already in call with ${currentCallTarget}`); };
-    } else {
-      li.classList.add("busy"); li.style.cursor="not-allowed"; li.style.opacity=0.6;
-    }
-    userList.appendChild(li);
+/**
+ * Helper to reset user state safely and immutably.
+ * FIX 1: Ensures immutable updates to avoid race conditions.
+ */
+function resetUserState(username) {
+  if (!users.has(username)) return;
+  const current = users.get(username);
+  
+  users.set(username, {
+    ws: current.ws,
+    status: STATUS.AVAILABLE,
+    peer: null
   });
 }
 
-// --- WebRTC ---
-function createPeerConnection(target){
-  if(peerConnection){ peerConnection.close(); peerConnection=null; }
-  const pc = new RTCPeerConnection(iceServers);
-  pc.onicecandidate = e=>{ if(e.candidate) sendSignalingMessage({ type:"iceCandidate", target, candidate:e.candidate }); };
-  pc.ontrack = e=>{ if(remoteAudio.srcObject!==e.streams[0]) remoteAudio.srcObject=e.streams[0]; if(!timerInterval) startCallTimer(); };
-  pc.onconnectionstatechange = ()=>{ if(pc.connectionState==='failed'||pc.connectionState==='disconnected'){ alert(`Call connection ${pc.connectionState}. Ending call.`); endCall(true); } };
-  pc.oniceconnectionstatechange = ()=>{ if(pc.iceConnectionState==='failed'){ statusMessage.textContent="Connection failed (ICE)."; endCall(true); } };
-  return pc;
-}
+// --- WEBSOCKET HANDLERS ---
 
-async function callUser(target){
-  if(currentCallTarget){ alert(`Already in call with ${currentCallTarget}`); return; }
-  currentCallTarget = target; statusMessage.textContent = `Calling ${target}...`;
-  try{
-    localStream = await navigator.mediaDevices.getUserMedia({ audio:true });
-    if(localAudio) localAudio.srcObject = localStream;
-    peerConnection = createPeerConnection(target);
-    localStream.getTracks().forEach(track=>peerConnection.addTrack(track, localStream));
-    const offer = await peerConnection.createOffer();
-    await peerConnection.setLocalDescription(offer);
-    sendSignalingMessage({ type:"offer", target, offer });
-  } catch(e){ alert("Failed to start call. Check microphone."); endCall(false); }
-}
+wss.on('connection', (ws, req) => {
+  ws.username = null;
+  // FIX 6: Log context in errors
+  ws.ip = req.socket.remoteAddress;
 
-async function onIncomingCall(caller, offer){
-  currentCallTarget = caller;
-  incomingCallerName.textContent = `Incoming call from ${caller}`;
-  incomingCallModal.classList.remove("hidden");
-  try{ await ringtone.play(); } catch {}
-  statusMessage.textContent = `Incoming call from ${caller}`;
-  try{ peerConnection=createPeerConnection(caller); await peerConnection.setRemoteDescription(new RTCSessionDescription(offer)); } catch(e){ rejectCall(); }
-}
+  ws.on('message', (raw) => {
+    let data;
+    try {
+      data = JSON.parse(raw);
+    } catch (err) {
+      console.warn(`Invalid JSON from ${ws.ip}:`, raw.toString().substring(0, 50));
+      return;
+    }
 
-async function acceptCall(){
-  ringtone.pause(); ringtone.currentTime=0; incomingCallModal.classList.add("hidden");
-  if(!currentCallTarget||!peerConnection) return;
-  try{
-    localStream = await navigator.mediaDevices.getUserMedia({ audio:true });
-    if(localAudio) localAudio.srcObject=localStream;
-    localStream.getTracks().forEach(track=>peerConnection.addTrack(track, localStream));
-    const answer = await peerConnection.createAnswer();
-    await peerConnection.setLocalDescription(answer);
-    sendSignalingMessage({ type:"answer", target:currentCallTarget, answer });
-    statusMessage.textContent = `In call with ${currentCallTarget}`;
-  } catch(e){ rejectCall(); }
-}
+    const type = data.type;
 
-function rejectCall(){
-  ringtone.pause(); ringtone.currentTime=0; incomingCallModal.classList.add("hidden");
-  if(currentCallTarget) sendSignalingMessage({ type:"reject", target:currentCallTarget, message:"Call rejected." });
-  endCall(false); statusMessage.textContent="Call rejected.";
-}
+    switch (type) {
+      // -------------------------
+      // LOGIN
+      // -------------------------
+      case 'login': {
+        const username = (data.username || '').trim();
+        if (!username) {
+          safeSend(ws, { type: 'loginFailure', message: 'Invalid username.' });
+          return;
+        }
+        if (users.has(username)) {
+          safeSend(ws, { type: 'loginFailure', message: 'Username already in use.' });
+          return;
+        }
 
-function hangUp(){ if(currentCallTarget) sendSignalingMessage({ type:"hangup", target:currentCallTarget, message:"User hung up." }); endCall(true); }
+        // register
+        users.set(username, { ws, status: STATUS.AVAILABLE, peer: null });
+        ws.username = username;
 
-function endCall(sendHangupSignal=false){
-  stopCallTimer();
-  if(localStream){ localStream.getTracks().forEach(t=>t.stop()); localStream=null; if(localAudio) localAudio.srcObject=null; }
-  if(peerConnection){ peerConnection.close(); peerConnection=null; }
-  if(remoteAudio) remoteAudio.srcObject=null;
-  if(sendHangupSignal && currentCallTarget) sendSignalingMessage({ type:"hangup", target:currentCallTarget, message:"User hung up." });
-  currentCallTarget=null;
-  ringtone.pause(); ringtone.currentTime=0;
-  incomingCallModal.classList.add("hidden");
-  statusMessage.textContent="Ready.";
-}
+        safeSend(ws, { type: 'loginSuccess', message: `Welcome ${username}` });
+        console.log(`✅ ${username} logged in from ${ws.ip}`);
+        broadcastUserList();
+        break;
+      }
 
-// --- Call Timer ---
-function startCallTimer(){
-  callControls.classList.remove("hidden");
-  callTimerDisplay.classList.remove("hidden");
-  callStartTime=Date.now();
-  timerInterval=setInterval(()=>{
-    const elapsed=Date.now()-callStartTime;
-    const minutes=Math.floor(elapsed/60000);
-    const seconds=Math.floor((elapsed%60000)/1000);
-    callTimerDisplay.textContent=`${minutes.toString().padStart(2,'0')}:${seconds.toString().padStart(2,'0')}`;
-  },1000);
-}
+      // -------------------------
+      // OFFER
+      // -------------------------
+      case 'offer': {
+        const { offer } = data;
+        const callerName = ws.username;
+        
+        // FIX 2: Validate target
+        let target = data.target;
+        if (typeof target === 'string') target = target.trim();
+        if (!callerName || typeof target !== 'string' || !target) {
+            safeSend(ws, { type: 'reject', message: 'Invalid target user or not logged in.' });
+            return;
+        }
 
-function stopCallTimer(){
-  clearInterval(timerInterval); timerInterval=null; callStartTime=null;
-  callTimerDisplay.textContent="00:00";
-  callTimerDisplay.classList.add("hidden");
-  callControls.classList.add("hidden");
-}
+        const targetData = users.get(target);
+        const callerData = users.get(callerName); // Caller must exist
+
+        // FIX 3: Robust existence check and state check
+        if (!targetData || targetData.ws.readyState !== targetData.ws.OPEN) {
+          safeSend(ws, { type: 'reject', message: `${target} not found or disconnected.` });
+          return;
+        }
+        
+        // FIX 8: Check if caller is already busy (in call or ringing another person)
+        if (callerData.status !== STATUS.AVAILABLE) {
+            safeSend(ws, { type: 'reject', message: 'You are already in a call or ringing.' });
+            return;
+        }
+        
+        // Callee status check
+        if (targetData.status !== STATUS.AVAILABLE) {
+          safeSend(ws, { type: 'reject', message: `${target} is busy.` });
+          return;
+        }
+
+        // forward offer to target
+        safeSend(targetData.ws, { type: 'offer', caller: callerName, offer });
+
+        // FIX 1 & 7: Update states immutably using constant strings
+        users.set(callerName, { ...callerData, status: STATUS.IN_CALL, peer: target });
+        users.set(target, { ...targetData, status: STATUS.RINGING, peer: callerName });
+
+        broadcastUserList();
+        break;
+      }
+
+      // -------------------------
+      // ANSWER
+      // -------------------------
+      case 'answer': {
+        const { target, answer } = data;
+        
+        // FIX 2: Validate target
+        if (typeof target === 'string') target = target.trim();
+        if (!ws.username || typeof target !== 'string' || !target) return;
+        
+        const callerData = users.get(target);
+        
+        if (callerData && callerData.ws && callerData.ws.readyState === callerData.ws.OPEN) {
+          safeSend(callerData.ws, { type: 'answer', answer, callee: ws.username });
+        }
+
+        // FIX 1 & 7: Mark both as In Call immutably
+        if (users.has(ws.username)) {
+          const calleeData = users.get(ws.username);
+          users.set(ws.username, { ...calleeData, status: STATUS.IN_CALL });
+        }
+        if (target && users.has(target)) {
+          // Caller is already set to 'In Call' but was 'Ringing' or 'In Call' from offer.
+          // Ensure peer is correctly set (already done in offer) and set to IN_CALL
+          const callerData = users.get(target);
+          users.set(target, { ...callerData, status: STATUS.IN_CALL });
+        }
+
+        broadcastUserList();
+        break;
+      }
+
+      // -------------------------
+      // ICE CANDIDATE
+      // -------------------------
+      case 'iceCandidate': {
+        const { target, candidate } = data;
+        
+        // FIX 2: Validate target
+        if (typeof target === 'string') target = target.trim();
+        if (!ws.username || typeof target !== 'string' || !target) return;
+        
+        const dest = users.get(target);
+        if (dest && dest.ws && dest.ws.readyState === dest.ws.OPEN) {
+          safeSend(dest.ws, { type: 'iceCandidate', candidate, caller: ws.username });
+        }
+        break;
+      }
+
+      // -------------------------
+      // REJECT
+      // -------------------------
+      case 'reject': {
+        const { target } = data;
+        
+        // FIX 2: Validate target
+        if (typeof target === 'string') target = target.trim();
+        if (!ws.username || typeof target !== 'string' || !target) return;
+        
+        const dest = users.get(target);
+        if (dest && dest.ws && dest.ws.readyState === dest.ws.OPEN) {
+          // Send reject notification to the caller
+          safeSend(dest.ws, { type: 'reject', callee: ws.username, message: data.message || null });
+        }
+        
+        // Reset states on both sides (callee/sender and caller/target)
+        resetUserState(ws.username);
+        resetUserState(target);
+        broadcastUserList();
+        break;
+      }
+
+      // -------------------------
+      // HANGUP (Handles Cancel too)
+      // -------------------------
+      case 'hangup': {
+        const { target } = data;
+        
+        // FIX 2: Validate target
+        if (typeof target === 'string') target = target.trim();
+        if (!ws.username || typeof target !== 'string' || !target) return;
+        
+        const dest = users.get(target);
+        if (dest && dest.ws && dest.ws.readyState === dest.ws.OPEN) {
+          safeSend(dest.ws, { type: 'hangup', caller: ws.username });
+        }
+        
+        // Reset states on both sides
+        resetUserState(ws.username);
+        resetUserState(target);
+        broadcastUserList();
+        break;
+      }
+
+      // FIX: Removed 'cancel' case as 'hangup' handles it perfectly.
+
+      // -------------------------
+      // UNKNOWN
+      // -------------------------
+      default:
+        console.warn(`Unknown message type (${type}) from ${ws.username || ws.ip}`);
+    }
+  });
+
+  ws.on('close', () => {
+    const username = ws.username;
+    if (!username || !users.has(username)) return;
+
+    console.log(`⚠️ ${username} disconnected.`);
+
+    const userData = users.get(username);
+    const peerName = userData.peer;
+    
+    // If they had a peer, notify peer and reset peer state
+    if (peerName && users.has(peerName)) {
+      const peer = users.get(peerName);
+      if (peer.ws && peer.ws.readyState === peer.ws.OPEN) {
+        // Send hangup to the peer so their client can clean up
+        safeSend(peer.ws, { type: 'hangup', caller: username });
+      }
+      resetUserState(peerName);
+    }
+
+    // finally remove user and broadcast
+    users.delete(username);
+    
+    // FIX 4: Explicitly nullify the ws reference to help GC
+    userData.ws = null; 
+
+    broadcastUserList();
+  });
+
+  ws.on('error', (err) => {
+    console.error(`WebSocket error for ${ws.username || ws.ip}:`, err && err.message);
+  });
+});
+
+server.listen(PORT, () => {
+  console.log(`🚀 EchoLink+ Signaling Server running on port ${PORT}`);
+});

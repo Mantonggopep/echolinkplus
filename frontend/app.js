@@ -1,313 +1,197 @@
-// ===============================================
-// Echo-Link+ Frontend (Audio-Only Robust Version)
-// ===============================================
+const wsUrl = 'wss://echolinkplus-backend.onrender.com';
+let ws, localStream, peerConnection, currentCall = null, username;
+let callStartTime, timerInterval;
 
-// --- Update this to your Render backend WebSocket URL ---
-const WS_URL = "wss://echolinkplus-backend.onrender.com";
+const servers = { iceServers: [{ urls: "stun:stun.l.google.com:19302" }] };
 
-let ws;
-let localStream;
-let peerConnection;
-let username = null;
-let remoteUser = null;
-let currentCall = null;
-
-// ======= TURN + STUN configuration for global connectivity =======
-const configuration = {
-  iceServers: [
-    { urls: "stun:stun.l.google.com:19302" },
-    { urls: "stun:stun1.l.google.com:19302" },
-    { urls: "stun:stun2.l.google.com:19302" },
-    // TURN server for users behind NAT/firewalls (use free or paid TURN)
-    {
-      urls: "turn:relay.metered.ca:80",
-      username: "openai",
-      credential: "openai123"
-    },
-    {
-      urls: "turn:relay.metered.ca:443",
-      username: "openai",
-      credential: "openai123"
-    },
-  ],
-};
-
-// ======= DOM Elements =======
-const usernameInput = document.getElementById("usernameInput");
-const statusMessage = document.getElementById("status-message");
+// Elements
 const loginView = document.getElementById("login-view");
 const appView = document.getElementById("app-view");
+const statusMessage = document.getElementById("status-message");
+const loggedUser = document.getElementById("logged-username");
 const userList = document.getElementById("user-list");
-const callControls = document.getElementById("call-controls");
-const micIndicator = document.getElementById("mic-indicator");
-const incomingModal = document.getElementById("incoming-call-modal");
-const incomingCallerName = document.getElementById("incoming-caller-name");
-const localAudio = document.getElementById("localAudio");
-const remoteAudio = document.getElementById("remoteAudio");
+const ringtone = document.getElementById("ringtone");
+const timerDisplay = document.getElementById("call-timer");
 
-// ===============================================
-// LOGIN HANDLER
-// ===============================================
-async function handleLogin() {
-  if (!usernameInput) {
-    console.error("usernameInput element missing.");
-    updateStatus("Error: username field missing in HTML.", "error");
-    return;
+// Persistent Login
+window.addEventListener("load", () => {
+  const savedUser = localStorage.getItem("echoname");
+  if (savedUser) {
+    document.getElementById("usernameInput").value = savedUser;
+    handleLogin();
   }
+});
 
-  username = usernameInput.value.trim();
-  if (!username) {
-    updateStatus("Please enter your Echo-Name.", "error");
-    return;
-  }
+function connectWebSocket() {
+  ws = new WebSocket(wsUrl);
 
-  updateStatus("Connecting to Echo-Link+ server...");
+  ws.onopen = () => {
+    statusMessage.textContent = "Connected to Echo-Link Server.";
+    if (username) ws.send(JSON.stringify({ type: "login", username }));
+  };
 
-  ws = new WebSocket(WS_URL);
-
-  ws.onopen = async () => {
-    updateStatus("Connected. Accessing microphone...");
-    ws.send(JSON.stringify({ type: "login", username }));
-
-    try {
-      localStream = await navigator.mediaDevices.getUserMedia({ audio: true });
-      localAudio.srcObject = localStream;
-      micIndicator.classList.add("active");
-      loginView.classList.add("hidden");
-      appView.classList.remove("hidden");
-      updateStatus(`Welcome, ${username}! Ready to Echo-Link.`);
-    } catch (err) {
-      console.error("Microphone error:", err);
-      updateStatus("Microphone access denied.", "error");
+  ws.onmessage = (msg) => {
+    const data = JSON.parse(msg.data);
+    switch (data.type) {
+      case "loginSuccess":
+        showAppView();
+        break;
+      case "loginFailure":
+        alert(data.message);
+        break;
+      case "userList":
+        updateUserList(data.users);
+        break;
+      case "offer":
+        onIncomingCall(data.caller, data.offer);
+        break;
+      case "answer":
+        peerConnection.setRemoteDescription(new RTCSessionDescription(data.answer));
+        break;
+      case "iceCandidate":
+        peerConnection.addIceCandidate(new RTCIceCandidate(data.candidate));
+        break;
+      case "reject":
+      case "hangup":
+        endCall();
+        break;
     }
   };
 
-  ws.onmessage = handleMessage;
-  ws.onclose = () => updateStatus("Disconnected from server.", "error");
-  ws.onerror = (err) => {
-    console.error("WebSocket error:", err);
-    updateStatus("Connection error. Please refresh.", "error");
+  ws.onclose = () => {
+    statusMessage.textContent = "Disconnected. Reconnecting...";
+    setTimeout(connectWebSocket, 2000);
   };
+
+  ws.onerror = (err) => console.error("WebSocket Error:", err);
 }
 
-// ===============================================
-// WEBSOCKET MESSAGE HANDLER
-// ===============================================
-function handleMessage(msg) {
-  const data = JSON.parse(msg.data);
-  console.log("Message from server:", data);
+function handleLogin() {
+  username = document.getElementById("usernameInput").value.trim();
+  if (!username) return alert("Enter a valid Echo-Name.");
 
-  switch (data.type) {
-    case "userList":
-      renderUserList(data.users);
-      break;
-    case "loginSuccess":
-      updateStatus("Login successful.", "success");
-      break;
-    case "loginFailure":
-      updateStatus("Echo-Name taken. Choose another.", "error");
-      break;
-    case "offer":
-      handleOffer(data.offer, data.caller);
-      break;
-    case "answer":
-      handleAnswer(data.answer);
-      break;
-    case "candidate":
-    case "iceCandidate":
-      handleCandidate(data.candidate);
-      break;
-    case "reject":
-      updateStatus(`${data.caller} is unavailable.`, "error");
-      break;
-    case "hangup":
-      handleRemoteHangup();
-      break;
-    default:
-      console.log("Unknown message:", data);
-  }
+  localStorage.setItem("echoname", username);
+  connectWebSocket();
 }
 
-// ===============================================
-// RENDER USER LIST
-// ===============================================
-function renderUserList(users) {
+function showAppView() {
+  loginView.classList.add("hidden");
+  appView.classList.remove("hidden");
+  loggedUser.textContent = username;
+  statusMessage.textContent = `Logged in as ${username}`;
+}
+
+function updateUserList(users) {
   userList.innerHTML = "";
-  users
-    .filter((u) => u.username !== username)
-    .forEach((u) => {
+  users.forEach(u => {
+    if (u.username !== username) {
       const li = document.createElement("li");
+      li.textContent = `${u.username}${u.status !== "Available" ? " (in call)" : ""}`;
       li.className = "user-item";
-      li.innerHTML = `
-        <span>${u.username} <small>(${u.status})</small></span>
-        <button class="call-btn" onclick="callUser('${u.username}')">Echo-Link</button>
-      `;
+      if (u.status === "Available") {
+        li.onclick = () => callUser(u.username);
+      } else {
+        li.style.opacity = 0.5;
+      }
       userList.appendChild(li);
-    });
+    }
+  });
 }
 
-// ===============================================
-// CALL ANOTHER USER
-// ===============================================
-async function callUser(targetUser) {
-  if (!ws || ws.readyState !== WebSocket.OPEN) {
-    updateStatus("Not connected to the server.", "error");
-    return;
-  }
+async function callUser(target) {
+  currentCall = target;
+  peerConnection = createPeerConnection(target);
 
-  remoteUser = targetUser;
-  updateStatus(`Connecting to ${targetUser}...`);
+  localStream = await navigator.mediaDevices.getUserMedia({ audio: true });
+  localStream.getTracks().forEach(track => peerConnection.addTrack(track, localStream));
 
-  createPeerConnection();
-
-  // Add local audio
-  localStream.getTracks().forEach((track) => peerConnection.addTrack(track, localStream));
-
-  // Create and send offer
   const offer = await peerConnection.createOffer();
   await peerConnection.setLocalDescription(offer);
-  ws.send(JSON.stringify({ type: "offer", offer, target: targetUser }));
 
-  currentCall = targetUser;
-  callControls.classList.remove("hidden");
-  updateStatus(`Calling ${targetUser}...`);
+  ws.send(JSON.stringify({ type: "offer", target, offer }));
+  statusMessage.textContent = `Calling ${target}...`;
 }
 
-// ===============================================
-// HANDLE INCOMING OFFER
-// ===============================================
-async function handleOffer(offer, callerName) {
-  remoteUser = callerName;
-  incomingCallerName.textContent = `${callerName} is Echo-Linking you...`;
-  incomingModal.classList.remove("hidden");
+function onIncomingCall(caller, offer) {
+  currentCall = caller;
+  document.getElementById("incoming-caller-name").textContent = `Incoming call from ${caller}`;
+  document.getElementById("incoming-call-modal").classList.remove("hidden");
+  ringtone.play();
 
-  window.acceptCall = async function () {
-    incomingModal.classList.add("hidden");
-    createPeerConnection();
-
-    localStream.getTracks().forEach((track) => peerConnection.addTrack(track, localStream));
-
-    await peerConnection.setRemoteDescription(new RTCSessionDescription(offer));
-    const answer = await peerConnection.createAnswer();
-    await peerConnection.setLocalDescription(answer);
-
-    ws.send(JSON.stringify({ type: "answer", answer, target: callerName }));
-
-    currentCall = callerName;
-    callControls.classList.remove("hidden");
-    updateStatus(`Connected with ${callerName}.`);
-  };
-
-  window.rejectCall = function () {
-    incomingModal.classList.add("hidden");
-    ws.send(JSON.stringify({ type: "reject", target: callerName }));
-    updateStatus(`Rejected call from ${callerName}.`, "info");
-  };
+  peerConnection = createPeerConnection(caller);
+  peerConnection.setRemoteDescription(new RTCSessionDescription(offer));
 }
 
-// ===============================================
-// PEER CONNECTION SETUP
-// ===============================================
-function createPeerConnection() {
-  peerConnection = new RTCPeerConnection(configuration);
+async function acceptCall() {
+  ringtone.pause();
+  document.getElementById("incoming-call-modal").classList.add("hidden");
 
-  peerConnection.onicecandidate = (event) => {
-    if (event.candidate) {
-      ws.send(
-        JSON.stringify({
-          type: "iceCandidate",
-          candidate: event.candidate,
-          target: remoteUser,
-        })
-      );
+  localStream = await navigator.mediaDevices.getUserMedia({ audio: true });
+  localStream.getTracks().forEach(track => peerConnection.addTrack(track, localStream));
+
+  const answer = await peerConnection.createAnswer();
+  await peerConnection.setLocalDescription(answer);
+
+  ws.send(JSON.stringify({ type: "answer", target: currentCall, answer }));
+  startTimer();
+}
+
+function rejectCall() {
+  ringtone.pause();
+  document.getElementById("incoming-call-modal").classList.add("hidden");
+  ws.send(JSON.stringify({ type: "reject", target: currentCall }));
+  currentCall = null;
+}
+
+function createPeerConnection(target) {
+  const pc = new RTCPeerConnection(servers);
+
+  pc.onicecandidate = (e) => {
+    if (e.candidate) {
+      ws.send(JSON.stringify({ type: "iceCandidate", target, candidate: e.candidate }));
     }
   };
 
-  peerConnection.onconnectionstatechange = () => {
-    const state = peerConnection.connectionState;
-    console.log("Connection state:", state);
-    if (state === "connected") {
-      updateStatus("Echo-Link active and stable.", "success");
-    } else if (state === "disconnected" || state === "failed") {
-      updateStatus("Connection lost. Attempting to reconnect...", "error");
-    }
+  pc.ontrack = (e) => {
+    document.getElementById("remoteAudio").srcObject = e.streams[0];
+    startTimer();
   };
 
-  peerConnection.ontrack = (event) => {
-    remoteAudio.srcObject = event.streams[0];
-    updateStatus("Audio stream connected.", "success");
-  };
+  return pc;
 }
 
-// ===============================================
-// HANDLE ANSWER
-// ===============================================
-async function handleAnswer(answer) {
-  await peerConnection.setRemoteDescription(new RTCSessionDescription(answer));
-  updateStatus("Echo-Link established successfully.", "success");
-}
-
-// ===============================================
-// HANDLE ICE CANDIDATE
-// ===============================================
-function handleCandidate(candidate) {
-  if (candidate && peerConnection) {
-    peerConnection.addIceCandidate(new RTCIceCandidate(candidate));
-  }
-}
-
-// ===============================================
-// HANGUP HANDLERS
-// ===============================================
 function hangUp() {
-  if (peerConnection) {
-    peerConnection.close();
-    peerConnection = null;
+  if (currentCall) {
+    ws.send(JSON.stringify({ type: "hangup", target: currentCall }));
   }
-
-  if (ws && remoteUser) {
-    ws.send(JSON.stringify({ type: "hangup", target: remoteUser }));
-  }
-
-  callControls.classList.add("hidden");
-  updateStatus("Echo-Link ended.");
-  remoteUser = null;
+  endCall();
 }
 
-function handleRemoteHangup() {
-  if (peerConnection) {
-    peerConnection.close();
-    peerConnection = null;
-  }
-
-  callControls.classList.add("hidden");
-  updateStatus("Remote user ended the call.");
-  remoteUser = null;
+function endCall() {
+  if (peerConnection) peerConnection.close();
+  peerConnection = null;
+  currentCall = null;
+  stopTimer();
+  statusMessage.textContent = "Call ended.";
 }
 
-// ===============================================
-// HELPER: Update Status Box
-// ===============================================
-function updateStatus(message, type = "info") {
-  statusMessage.textContent = message;
-  statusMessage.style.backgroundColor =
-    type === "error"
-      ? "#f8d7da"
-      : type === "success"
-      ? "#d4edda"
-      : "#e6f7ff";
-  statusMessage.style.color =
-    type === "error"
-      ? "#721c24"
-      : type === "success"
-      ? "#155724"
-      : "#004085";
+function startTimer() {
+  const callControls = document.getElementById("call-controls");
+  callControls.classList.remove("hidden");
+  timerDisplay.classList.remove("hidden");
+
+  callStartTime = Date.now();
+  timerInterval = setInterval(() => {
+    const elapsed = Math.floor((Date.now() - callStartTime) / 1000);
+    const m = String(Math.floor(elapsed / 60)).padStart(2, "0");
+    const s = String(elapsed % 60).padStart(2, "0");
+    timerDisplay.textContent = `${m}:${s}`;
+  }, 1000);
 }
 
-// ===============================================
-// FIX FAVICON 404 (Optional)
-// ===============================================
-const link = document.createElement("link");
-link.rel = "icon";
-link.href = "data:,";
-document.head.appendChild(link);
+function stopTimer() {
+  clearInterval(timerInterval);
+  timerDisplay.textContent = "00:00";
+  timerDisplay.classList.add("hidden");
+  document.getElementById("call-controls").classList.add("hidden");
+}

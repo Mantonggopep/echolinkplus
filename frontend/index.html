@@ -5,184 +5,39 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>Echo-Link+</title>
   <link rel="stylesheet" href="style.css" />
-
-  <style>
-    body {
-      background: radial-gradient(circle at top, #141E30, #243B55);
-      color: #fff;
-      font-family: "Poppins", sans-serif;
-      margin: 0;
-      padding: 0;
-      display: flex;
-      justify-content: center;
-      align-items: center;
-      height: 100vh;
-    }
-
-    .container {
-      width: 90%;
-      max-width: 500px;
-      background: rgba(255, 255, 255, 0.08);
-      padding: 2rem;
-      border-radius: 16px;
-      box-shadow: 0 0 25px rgba(0, 0, 0, 0.3);
-      backdrop-filter: blur(8px);
-      text-align: center;
-    }
-
-    h1 {
-      font-size: 2rem;
-      color: #FFD700;
-      margin-bottom: 1rem;
-    }
-
-    .status-box {
-      background: rgba(255, 255, 255, 0.15);
-      padding: 0.7rem;
-      border-radius: 8px;
-      font-size: 0.9rem;
-      margin-bottom: 1rem;
-    }
-
-    input {
-      width: 80%;
-      padding: 0.7rem;
-      margin-top: 0.5rem;
-      border-radius: 8px;
-      border: none;
-      font-size: 1rem;
-      outline: none;
-    }
-
-    button {
-      margin-top: 1rem;
-      padding: 0.8rem 1.2rem;
-      border: none;
-      border-radius: 10px;
-      cursor: pointer;
-      font-weight: 600;
-      transition: all 0.3s ease;
-    }
-
-    button:hover {
-      opacity: 0.9;
-      transform: scale(1.05);
-    }
-
-    #loginBtn {
-      background-color: #1E90FF;
-      color: #fff;
-    }
-
-    .hangup-btn {
-      background-color: #FF4C4C;
-      color: #fff;
-    }
-
-    .call-bar {
-      display: flex;
-      justify-content: space-between;
-      align-items: center;
-      margin-bottom: 1rem;
-      font-size: 0.9rem;
-    }
-
-    .mic-status {
-      font-size: 1.2rem;
-      transition: color 0.3s ease;
-    }
-
-    .mic-status.active {
-      color: #00FF00;
-    }
-
-    .mic-status.inactive {
-      color: #FF4C4C;
-    }
-
-    ul {
-      list-style: none;
-      padding: 0;
-      margin: 0;
-    }
-
-    li {
-      background: rgba(255, 255, 255, 0.1);
-      margin: 0.4rem 0;
-      padding: 0.8rem;
-      border-radius: 10px;
-      cursor: pointer;
-      transition: background 0.3s ease;
-    }
-
-    li:hover {
-      background: rgba(255, 255, 255, 0.25);
-    }
-
-    .hidden {
-      display: none;
-    }
-
-    .modal {
-      position: fixed;
-      top: 0;
-      left: 0;
-      right: 0;
-      bottom: 0;
-      display: flex;
-      justify-content: center;
-      align-items: center;
-      background: rgba(0, 0, 0, 0.7);
-      z-index: 100;
-    }
-
-    .modal-content {
-      background: #243B55;
-      padding: 2rem;
-      border-radius: 12px;
-      text-align: center;
-    }
-
-    .modal-buttons button {
-      margin: 0.5rem;
-    }
-
-    .hidden-media {
-      display: none;
-    }
-  </style>
 </head>
 <body>
   <div class="container">
     <h1>Echo-Link+</h1>
-    <div id="status-message" class="status-box">Connecting to Echo-Link network...</div>
+    <div id="status-message" class="status-box">Connecting...</div>
 
     <!-- Login View -->
-    <div id="login-view">
-      <h2>Enter Your Echo Name</h2>
+    <div id="login-view" class="card">
+      <h2>Enter Your Echo-Name</h2>
       <input type="text" id="usernameInput" placeholder="e.g., Mantong" />
       <button id="loginBtn" onclick="handleLogin()">Connect</button>
     </div>
 
-    <!-- Main App View -->
+    <!-- App View -->
     <div id="app-view" class="hidden">
       <div class="call-bar">
-        <div id="call-message">Logged in as: <span id="loggedUser"></span></div>
-        <div id="mic-indicator" class="mic-status inactive" title="Microphone Status">🎙️</div>
+        <div id="call-message">Logged in as: <span id="logged-username"></span></div>
+        <div id="call-timer" class="timer hidden">00:00</div>
+        <div id="mic-indicator" class="mic-status inactive" title="Microphone Inactive">🎙️</div>
       </div>
 
       <div class="card user-list-container">
-        <h2>Available Users</h2>
+        <h2>Available Echo-Link Users</h2>
         <ul id="user-list"></ul>
       </div>
 
       <div id="call-controls" class="call-controls hidden">
-        <button class="hangup-btn" onclick="hangUp()">End Call</button>
+        <button class="hangup-btn" onclick="hangUp()">End Echo-Link</button>
       </div>
     </div>
   </div>
 
-  <!-- Audio Elements -->
+  <!-- Hidden audio elements -->
   <audio id="localAudio" autoplay muted class="hidden-media"></audio>
   <audio id="remoteAudio" autoplay class="hidden-media"></audio>
 
@@ -196,6 +51,9 @@
       </div>
     </div>
   </div>
+
+  <!-- Ringtone for incoming call -->
+  <audio id="ringtone" src="https://actions.google.com/sounds/v1/alarms/phone_alerts_and_rings.ogg" loop></audio>
 
   <script src="app.js"></script>
 </body>

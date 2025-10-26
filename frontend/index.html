@@ -1,60 +1,116 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-  <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Echo-Link+</title>
-  <link rel="stylesheet" href="style.css" />
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="description" content="EchoLink+ - Secure, real-time voice calls over WebRTC">
+    <meta name="theme-color" content="#3498db">
+    <title>EchoLink+ - Secure Voice Calls</title>
+
+    <!-- Dynamic Favicon -->
+    <link rel="icon" href="image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2290%22>📞</text></svg>" type="image/svg+xml">
+
+    <style>
+        /* Basic styles for visibility & hidden elements */
+        .hidden { display: none !important; }
+        body { font-family: Arial, sans-serif; margin: 0; padding: 0; background-color: #f7f9fc; color: #333; }
+        .container { max-width: 500px; margin: 2rem auto; padding: 1rem; background: #fff; border-radius: 8px; box-shadow: 0 4px 12px rgba(0,0,0,0.1); }
+        h1, h2 { text-align: center; }
+        ul { list-style: none; padding: 0; }
+        button { cursor: pointer; padding: 0.5rem 1rem; margin: 0.25rem; border: none; border-radius: 4px; background-color: #3498db; color: white; }
+        button:hover { background-color: #2980b9; }
+        input { padding: 0.5rem; width: calc(100% - 1rem); margin-bottom: 0.5rem; border: 1px solid #ccc; border-radius: 4px; }
+        #incoming-call-modal { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.5); display: flex; align-items: center; justify-content: center; }
+        #incoming-call-content { background: #fff; padding: 2rem; border-radius: 8px; text-align: center; width: 90%; max-width: 400px; }
+        footer { text-align: center; margin-top: 2rem; font-size: 0.9rem; color: #666; }
+        #call-timer { font-weight: bold; margin-top: 1rem; }
+    </style>
 </head>
 <body>
-  <div class="container">
-    <h1>Echo-Link+</h1>
-    <div id="status-message" class="status-box">Connecting...</div>
+    <div class="container">
+        <h1>EchoLink+</h1>
+        <p id="status-message" aria-live="polite">Connecting to server...</p>
 
-    <!-- Login View -->
-    <div id="login-view" class="card">
-      <h2>Enter Your Echo-Name</h2>
-      <input type="text" id="usernameInput" placeholder="e.g., Mantong" />
-      <button id="loginBtn" onclick="handleLogin()">Connect</button>
+        <!-- Login View -->
+        <div id="login-view">
+            <h2>Login</h2>
+            <form id="loginForm">
+                <input 
+                    type="text" 
+                    id="usernameInput" 
+                    placeholder="Enter your Echo-Name" 
+                    required 
+                    autocomplete="username"
+                    maxlength="30"
+                >
+                <button type="submit">Login</button>
+            </form>
+        </div>
+
+        <!-- App View (Hidden until login) -->
+        <div id="app-view" class="hidden">
+            <p>Logged in as: <span id="logged-username"></span></p>
+            <button id="logoutButton">Logout</button>
+
+            <h2>Available Users</h2>
+            <ul id="user-list" aria-label="Available users list"></ul>
+
+            <!-- Call Timer -->
+            <div id="call-timer" class="hidden">00:00</div>
+
+            <!-- Call Controls -->
+            <div id="call-controls" class="hidden">
+                <button id="hangupButton">End Call</button>
+                <button id="muteButton">Mute</button>
+                <button id="unmuteButton" class="hidden">Unmute</button>
+            </div>
+        </div>
+
+        <!-- Audio Elements -->
+        <audio id="remoteAudio" autoplay playsinline class="hidden" aria-hidden="true"></audio>
+        <audio id="localAudio" autoplay muted playsinline class="hidden" aria-hidden="true"></audio>
     </div>
 
-    <!-- App View -->
-    <div id="app-view" class="hidden">
-      <div class="call-bar">
-        <div id="call-message">Logged in as: <span id="logged-username"></span></div>
-        <div id="call-timer" class="timer hidden">00:00</div>
-        <div id="mic-indicator" class="mic-status inactive" title="Microphone Inactive">🎙️</div>
-      </div>
-
-      <div class="card user-list-container">
-        <h2>Available Echo-Link Users</h2>
-        <ul id="user-list"></ul>
-      </div>
-
-      <div id="call-controls" class="call-controls hidden">
-        <button class="hangup-btn" onclick="hangUp()">End Echo-Link</button>
-      </div>
+    <!-- Incoming Call Modal -->
+    <div id="incoming-call-modal" class="hidden" aria-hidden="true">
+        <div id="incoming-call-content">
+            <h2 id="incoming-caller-name">Incoming call from [Caller Name]</h2>
+            <div id="modal-buttons">
+                <button id="acceptCallButton">Accept</button>
+                <button id="rejectCallButton">Reject</button>
+            </div>
+        </div>
     </div>
-  </div>
 
-  <!-- Hidden audio elements -->
-  <audio id="localAudio" autoplay muted class="hidden-media"></audio>
-  <audio id="remoteAudio" autoplay class="hidden-media"></audio>
+    <!-- Ringtone -->
+    <audio id="ringtone" preload="auto" class="hidden" aria-hidden="true"></audio>
 
-  <!-- Incoming Call Modal -->
-  <div id="incoming-call-modal" class="modal hidden">
-    <div class="modal-content">
-      <p id="incoming-caller-name">Incoming Echo-Link...</p>
-      <div class="modal-buttons">
-        <button class="accept-btn" onclick="acceptCall()">Accept</button>
-        <button class="reject-btn" onclick="rejectCall()">Reject</button>
-      </div>
-    </div>
-  </div>
+    <footer>
+        <p>&copy; <span id="currentYear"></span> EchoLink+. All rights reserved.</p>
+    </footer>
 
-  <!-- Ringtone for incoming call -->
-  <audio id="ringtone" src="https://actions.google.com/sounds/v1/alarms/phone_alerts_and_rings.ogg" loop></audio>
+    <script src="app.js"></script>
+    <script>
+        // Dynamic year
+        document.getElementById('currentYear').textContent = new Date().getFullYear();
 
-  <script src="app.js"></script>
+        // Preload ringtone
+        const ringtone = document.getElementById('ringtone');
+        ringtone.src = 'assets/sounds/ringtone.mp3';
+        ringtone.load();
+
+        // Focus username input
+        const usernameInput = document.getElementById('usernameInput');
+        usernameInput.focus();
+
+        // Ringtone helpers
+        function playRingtone() {
+            ringtone.play().catch(e => console.warn('Ringtone playback blocked:', e));
+        }
+        function stopRingtone() {
+            ringtone.pause();
+            ringtone.currentTime = 0;
+        }
+    </script>
 </body>
 </html>

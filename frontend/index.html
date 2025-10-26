@@ -3,114 +3,83 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <meta name="description" content="EchoLink+ - Secure, real-time voice calls over WebRTC">
-    <meta name="theme-color" content="#3498db">
     <title>EchoLink+ - Secure Voice Calls</title>
-
-    <!-- Dynamic Favicon -->
-    <link rel="icon" href="image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2290%22>📞</text></svg>" type="image/svg+xml">
-
-    <style>
-        /* Basic styles for visibility & hidden elements */
-        .hidden { display: none !important; }
-        body { font-family: Arial, sans-serif; margin: 0; padding: 0; background-color: #f7f9fc; color: #333; }
-        .container { max-width: 500px; margin: 2rem auto; padding: 1rem; background: #fff; border-radius: 8px; box-shadow: 0 4px 12px rgba(0,0,0,0.1); }
-        h1, h2 { text-align: center; }
-        ul { list-style: none; padding: 0; }
-        button { cursor: pointer; padding: 0.5rem 1rem; margin: 0.25rem; border: none; border-radius: 4px; background-color: #3498db; color: white; }
-        button:hover { background-color: #2980b9; }
-        input { padding: 0.5rem; width: calc(100% - 1rem); margin-bottom: 0.5rem; border: 1px solid #ccc; border-radius: 4px; }
-        #incoming-call-modal { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.5); display: flex; align-items: center; justify-content: center; }
-        #incoming-call-content { background: #fff; padding: 2rem; border-radius: 8px; text-align: center; width: 90%; max-width: 400px; }
-        footer { text-align: center; margin-top: 2rem; font-size: 0.9rem; color: #666; }
-        #call-timer { font-weight: bold; margin-top: 1rem; }
-    </style>
+    <link rel="icon" href="/favicon.ico" type="image/x-icon"> <!-- Assuming favicon.ico in root -->
+    <!-- Google Fonts for a modern, attractive font -->
+    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <!-- Link to your external stylesheet -->
+    <link rel="stylesheet" href="style.css">
 </head>
 <body>
     <div class="container">
+        <!-- Status message positioned at the top of the container -->
+        <p id="status-message">Initializing...</p>
+
         <h1>EchoLink+</h1>
-        <p id="status-message" aria-live="polite">Connecting to server...</p>
 
         <!-- Login View -->
         <div id="login-view">
-            <h2>Login</h2>
+            <h2>Connect with friends.</h2>
             <form id="loginForm">
-                <input 
-                    type="text" 
-                    id="usernameInput" 
-                    placeholder="Enter your Echo-Name" 
-                    required 
-                    autocomplete="username"
-                    maxlength="30"
-                >
+                <input type="text" id="usernameInput" placeholder="Enter your Echo-Name" required>
                 <button type="submit">Login</button>
             </form>
         </div>
 
-        <!-- App View (Hidden until login) -->
+        <!-- Application View -->
         <div id="app-view" class="hidden">
-            <p>Logged in as: <span id="logged-username"></span></p>
-            <button id="logoutButton">Logout</button>
+            <div class="logged-info">
+                <p>Logged in as: <span id="logged-username"></span></p>
+                <button id="logoutButton" class="small-button">Logout</button>
+            </div>
 
             <h2>Available Users</h2>
-            <ul id="user-list" aria-label="Available users list"></ul>
+            <ul id="user-list">
+                <!-- User list items will be populated here by JavaScript -->
+                <li><p class="placeholder-text">Loading users...</p></li> <!-- Placeholder text inside li for consistency -->
+            </ul>
 
             <!-- Call Timer -->
             <div id="call-timer" class="hidden">00:00</div>
 
             <!-- Call Controls -->
             <div id="call-controls" class="hidden">
-                <button id="hangupButton">End Call</button>
-                <button id="muteButton">Mute</button>
-                <button id="unmuteButton" class="hidden">Unmute</button>
+                <button id="hangupButton" class="control-button danger">End Call</button>
+                <button id="muteButton" class="control-button warning">Mute</button>
+                <button id="unmuteButton" class="control-button warning hidden">Unmute</button>
             </div>
+            
+            <!-- Audio elements for WebRTC -->
+            <audio id="remoteAudio" autoplay></audio>
+            <audio id="localAudio" autoplay muted></audio>
         </div>
 
-        <!-- Audio Elements -->
-        <audio id="remoteAudio" autoplay playsinline class="hidden" aria-hidden="true"></audio>
-        <audio id="localAudio" autoplay muted playsinline class="hidden" aria-hidden="true"></audio>
     </div>
 
     <!-- Incoming Call Modal -->
-    <div id="incoming-call-modal" class="hidden" aria-hidden="true">
+    <div id="incoming-call-modal" class="hidden">
         <div id="incoming-call-content">
             <h2 id="incoming-caller-name">Incoming call from [Caller Name]</h2>
             <div id="modal-buttons">
-                <button id="acceptCallButton">Accept</button>
-                <button id="rejectCallButton">Reject</button>
+                <button id="acceptCallButton" class="modal-button success">Accept</button>
+                <button id="rejectCallButton" class="modal-button danger">Reject</button>
             </div>
         </div>
     </div>
 
-    <!-- Ringtone -->
-    <audio id="ringtone" preload="auto" class="hidden" aria-hidden="true"></audio>
+    <!-- Ringtone Audio -->
+    <audio id="ringtone" src="sounds/ringtone.mp3" loop preload="auto"></audio>
+    <!-- IMPORTANT: Ensure 'sounds/ringtone.mp3' exists in your project -->
 
     <footer>
         <p>&copy; <span id="currentYear"></span> EchoLink+. All rights reserved.</p>
     </footer>
 
+    <!-- Link to your JavaScript file -->
     <script src="app.js"></script>
     <script>
-        // Dynamic year
+        // Set current year in footer
         document.getElementById('currentYear').textContent = new Date().getFullYear();
-
-        // Preload ringtone
-        const ringtone = document.getElementById('ringtone');
-        ringtone.src = 'assets/sounds/ringtone.mp3';
-        ringtone.load();
-
-        // Focus username input
-        const usernameInput = document.getElementById('usernameInput');
-        usernameInput.focus();
-
-        // Ringtone helpers
-        function playRingtone() {
-            ringtone.play().catch(e => console.warn('Ringtone playback blocked:', e));
-        }
-        function stopRingtone() {
-            ringtone.pause();
-            ringtone.currentTime = 0;
-        }
     </script>
 </body>
 </html>

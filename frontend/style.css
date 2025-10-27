@@ -193,7 +193,7 @@ button:disabled {
     overflow-y: auto;
     border: 1px solid var(--border-light);
     border-radius: 8px;
-    background-color: var(--background-light);
+    background-color: var(--card-background); /* Changed from background-light to card-background for contrast */
 }
 
 .user-item {
@@ -215,7 +215,7 @@ button:disabled {
 }
 
 .user-item.available:hover {
-    background-color: rgba(var(--primary-blue), 0.1);
+    background-color: rgba(102, 126, 234, 0.1); /* Use rgba of primary-blue for transparency effect */
 }
 
 .user-item.busy {
@@ -226,12 +226,11 @@ button:disabled {
 }
 
 .user-item .status-info {
-    /* FIX: Ensure dot and link/text are aligned */
     display: flex;
     align-items: center;
-    gap: 5px; 
+    gap: 5px; /* Space between dot and status text/link */
     font-size: 0.9em;
-    color: #666;
+    color: #666; /* Default status text color */
 }
 
 .user-item.available .status-info {
@@ -250,20 +249,22 @@ button:disabled {
     flex-shrink: 0;
 }
 
-/* --- FIX: Style for the 'Call' Link --- */
+/* --- FIX 1: Style for the 'Call' Link --- */
 .user-item .call-link {
     color: var(--primary-blue); /* Use the soft blue for the link */
     font-weight: 600;
     text-decoration: none;
-    padding: 2px 5px; /* Add slight padding to make it a better click target */
+    padding: 2px 5px; 
     border-radius: 4px;
     transition: background-color 0.2s ease;
 }
 
 .user-item .call-link:hover {
     text-decoration: underline;
-    background-color: rgba(var(--primary-blue), 0.1);
+    background-color: rgba(102, 126, 234, 0.1);
 }
+/* -------------------------------------- */
+
 
 /* Call Controls */
 #call-controls {

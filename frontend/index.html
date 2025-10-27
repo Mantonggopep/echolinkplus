@@ -1,29 +1,33 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
+<<<<<<< HEAD
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>EchoLink+ - Secure Voice Calls</title>
-    <link rel="icon" href="/favicon.ico" type="image/x-icon">
+    <link rel="icon" href="/favicon.ico" type="image/x-icon"> <!-- Assuming favicon.ico in root -->
+    <!-- Google Fonts for a modern, attractive font -->
     <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <!-- Link to your external stylesheet -->
     <link rel="stylesheet" href="style.css">
 </head>
 <body>
     <div class="container">
+        <!-- Status message positioned at the top of the container -->
         <p id="status-message">Initializing...</p>
 
         <h1>EchoLink+</h1>
 
-        <!-- Login -->
+        <!-- Login View -->
         <div id="login-view">
-            <h2>Connect with friends</h2>
+            <h2>Connect with friends.</h2>
             <form id="loginForm">
                 <input type="text" id="usernameInput" placeholder="Enter your Echo-Name" required>
                 <button type="submit">Login</button>
             </form>
         </div>
 
-        <!-- App -->
+        <!-- Application View -->
         <div id="app-view" class="hidden">
             <div class="logged-info">
                 <p>Logged in as: <span id="logged-username"></span></p>
@@ -32,20 +36,25 @@
 
             <h2>Available Users</h2>
             <ul id="user-list">
-                <li><p class="placeholder-text">Loading users...</p></li>
+                <!-- User list items will be populated here by JavaScript -->
+                <li><p class="placeholder-text">Loading users...</p></li> <!-- Placeholder text inside li for consistency -->
             </ul>
 
+            <!-- Call Timer -->
             <div id="call-timer" class="hidden">00:00</div>
 
+            <!-- Call Controls -->
             <div id="call-controls" class="hidden">
                 <button id="hangupButton" class="control-button danger">End Call</button>
                 <button id="muteButton" class="control-button warning">Mute</button>
                 <button id="unmuteButton" class="control-button warning hidden">Unmute</button>
             </div>
-
+            
+            <!-- Audio elements for WebRTC -->
             <audio id="remoteAudio" autoplay></audio>
             <audio id="localAudio" autoplay muted></audio>
         </div>
+
     </div>
 
     <!-- Incoming Call Modal -->
@@ -59,26 +68,59 @@
         </div>
     </div>
 
+    <!-- Ringtone Audio -->
     <audio id="ringtone" src="sounds/ringtone.mp3" loop preload="auto"></audio>
+    <!-- IMPORTANT: Ensure 'sounds/ringtone.mp3' exists in your project -->
 
     <footer>
-        &copy; <span id="currentYear"></span> EchoLink+
+        <p>&copy; <span id="currentYear"></span> EchoLink+. All rights reserved.</p>
     </footer>
 
+    <!-- Link to your JavaScript file -->
     <script src="app.js"></script>
     <script>
-        // Update footer year
+        // Set current year in footer
         document.getElementById('currentYear').textContent = new Date().getFullYear();
-
-        // Check for saved username on page load (persistent login)
-        window.addEventListener('load', () => {
-            const savedUser = localStorage.getItem('echoname');
-            if (savedUser) {
-                document.getElementById('usernameInput').value = savedUser;
-                // Trigger login through app.js function
-                handleLogin(savedUser);
-            }
-        });
     </script>
+=======
+<meta charset="UTF-8">
+<title>EchoLink+</title>
+<style>
+.hidden { display:none; }
+.user-item { cursor:pointer; margin:5px 0; }
+.available { color:green; }
+.busy { color:red; }
+</style>
+</head>
+<body>
+
+<div id="login-view">
+  <input id="usernameInput" placeholder="Enter Echo-Name"/>
+  <button onclick="handleLogin()">Login</button>
+</div>
+
+<div id="app-view" class="hidden">
+  <p id="logged-username"></p>
+  <p id="status-message"></p>
+  <ul id="user-list"></ul>
+
+  <div id="incoming-call-modal" class="hidden">
+    <p id="incoming-caller-name"></p>
+    <button onclick="acceptCall()">Accept</button>
+    <button onclick="rejectCall()">Reject</button>
+  </div>
+
+  <audio id="ringtone" src="/ringtone.mp3" loop></audio>
+  <audio id="remoteAudio" autoplay></audio>
+  <audio id="localAudio" autoplay muted></audio>
+
+  <div id="call-controls" class="hidden">
+    <span id="call-timer">00:00</span>
+    <button onclick="hangUp()">Hang Up</button>
+  </div>
+</div>
+
+<script src="/app.js"></script>
+>>>>>>> bd2f2b4 (Update backend and frontend files for WebRTC app)
 </body>
 </html>

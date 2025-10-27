@@ -67,7 +67,18 @@
 
     <script src="app.js"></script>
     <script>
+        // Update footer year
         document.getElementById('currentYear').textContent = new Date().getFullYear();
+
+        // Check for saved username on page load (persistent login)
+        window.addEventListener('load', () => {
+            const savedUser = localStorage.getItem('echoname');
+            if (savedUser) {
+                document.getElementById('usernameInput').value = savedUser;
+                // Trigger login through app.js function
+                handleLogin(savedUser);
+            }
+        });
     </script>
 </body>
 </html>

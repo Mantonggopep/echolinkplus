@@ -293,7 +293,6 @@ wss.on('connection', (ws, req) => {
 server.listen(PORT, () => {
   console.log(`🚀 EchoLink+ Signaling Server running on port ${PORT}`);
 });
-=======
 import express from 'express';
 import http from 'http';
 import WebSocket from 'ws';
@@ -344,7 +343,7 @@ wss.on('connection', (ws) => {
       case 'hangup':
       case 'reject':
         const target = users.get(data.target);
-        if (target && target.readyState === WebSocket.OPEN) {
+        if (target && target.readyState  WebSocket.OPEN) {
           target.send(JSON.stringify({ ...data, caller: ws.username }));
         }
         break;
@@ -362,7 +361,7 @@ wss.on('connection', (ws) => {
 function broadcastUserList() {
   const list = Array.from(users.keys()).map(u => ({ username: u, status: 'Available' }));
   users.forEach(ws => {
-    if (ws.readyState === WebSocket.OPEN) {
+    if (ws.readyState  WebSocket.OPEN) {
       ws.send(JSON.stringify({ type: 'userList', users: list }));
     }
   });

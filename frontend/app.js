@@ -51,7 +51,11 @@ const incomingCallerName = document.getElementById("incoming-caller-name");
 const callTimerDisplay = document.getElementById("call-timer");
 const muteButton = document.getElementById('muteButton'); // Mute button
 const unmuteButton = document.getElementById('unmuteButton'); // Unmute button
-
+const loginForm = document.getElementById('loginForm'); // Added for login submit listener
+const logoutButton = document.getElementById('logoutButton'); // Added for logout listener
+const hangupButton = document.getElementById('hangupButton'); // Added for hangup listener
+const acceptCallButton = document.getElementById('acceptCallButton'); // Added for accept listener
+const rejectCallButton = document.getElementById('rejectCallButton'); // Added for reject listener
 
 // --- On Load: Try Persistent Login & Initial WebSocket Connect (FIXED) ---
 window.addEventListener("load", () => {
@@ -64,6 +68,20 @@ window.addEventListener("load", () => {
     // Only connect the WebSocket. We don't attempt login as username is empty.
     connectWebSocket(false);
   }
+
+  // --- Initialize DOM Event Listeners (CRITICAL FIX) ---
+  if (loginForm) {
+      loginForm.addEventListener('submit', (e) => {
+          e.preventDefault();
+          handleLogin();
+      });
+  }
+  if (logoutButton) logoutButton.addEventListener('click', showLoginView);
+  if (hangupButton) hangupButton.addEventListener('click', hangUp);
+  if (muteButton) muteButton.addEventListener('click', toggleMute);
+  if (unmuteButton) unmuteButton.addEventListener('click', toggleMute);
+  if (acceptCallButton) acceptCallButton.addEventListener('click', acceptCall);
+  if (rejectCallButton) rejectCallButton.addEventListener('click', rejectCall);
 });
 
 // --- WebSocket Management (FIXED) ---
@@ -207,6 +225,7 @@ function sendSignalingMessage(message) {
 
 // --- UI Functions (FIXED handleLogin) ---
 function handleLogin(savedUser = null) {
+  // Use 'loginForm' to handle the event for manual login, or accept 'savedUser'
   const inputUsername = document.getElementById("usernameInput")?.value?.trim();
   const userToLogin = savedUser || inputUsername;
 
@@ -545,7 +564,34 @@ function stopCallTimer() {
   callControls.classList.add("hidden"); // Hide call controls
 }
 
-// --- Mute/Unmute Functionality ---
+// --- Mute/Unmute Functionality (COMPLETED) ---
 function toggleMute() {
     if (!localStream) {
-        cons
+        console.warn("No local stream to mute/unmute.");
+        statusMessage.textContent = "No active microphone.";
+        return;
+    }
+
+    const audioTracks = localStream.getAudioTracks();
+    if (audioTracks.length === 0) {
+        console.warn("No audio tracks found in local stream.");
+        statusMessage.textContent = "No audio input available.";
+        return;
+    }
+    
+    // Toggle the enabled state of the first audio track
+    const currentlyMuted = !audioTracks[0].enabled;
+    const newState = !currentlyMuted; // true = unmute, false = mute
+    
+    audioTracks.forEach(track => track.enabled = newState);
+
+    if (newState) {
+        muteButton.classList.remove('hidden');
+        unmuteButton.classList.add('hidden');
+        statusMessage.textContent = "Microphone ON";
+    } else {
+        muteButton.classList.add('hidden');
+        unmuteButton.classList.remove('hidden');
+        statusMessage.textContent = "Microphone MUTED";
+    }
+}

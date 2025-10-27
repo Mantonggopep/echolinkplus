@@ -6,7 +6,7 @@
     <title>EchoLink+ - Secure Voice Calls</title>
     <link rel="icon" href="/favicon.ico" type="image/x-icon">
     <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700&display=swap" rel="stylesheet">
-    <link rel="stylesheet" href="style.css"> 
+    <link rel="stylesheet" href="style.css">
 </head>
 <body>
     <div class="container">
@@ -14,17 +14,19 @@
 
         <h1>EchoLink+</h1>
 
+        <!-- Login -->
         <div id="login-view">
-            <h2>Connect with friends.</h2>
+            <h2>Connect with friends</h2>
             <form id="loginForm">
                 <input type="text" id="usernameInput" placeholder="Enter your Echo-Name" required>
                 <button type="submit">Login</button>
             </form>
         </div>
 
+        <!-- App -->
         <div id="app-view" class="hidden">
             <div class="logged-info">
-                <p>Logged in as: <span id="logged-username"></span></p> 
+                <p>Logged in as: <span id="logged-username"></span></p>
                 <button id="logoutButton" class="small-button">Logout</button>
             </div>
 
@@ -40,13 +42,13 @@
                 <button id="muteButton" class="control-button warning">Mute</button>
                 <button id="unmuteButton" class="control-button warning hidden">Unmute</button>
             </div>
-            
+
             <audio id="remoteAudio" autoplay></audio>
             <audio id="localAudio" autoplay muted></audio>
         </div>
-
     </div>
 
+    <!-- Incoming Call Modal -->
     <div id="incoming-call-modal" class="hidden">
         <div id="incoming-call-content">
             <h2 id="incoming-caller-name">Incoming call from [Caller Name]</h2>
@@ -59,9 +61,12 @@
 
     <audio id="ringtone" src="sounds/ringtone.mp3" loop preload="auto"></audio>
 
+    <footer>
+        &copy; <span id="currentYear"></span> EchoLink+
+    </footer>
+
     <script src="app.js"></script>
     <script>
-        // Set current year in footer
         document.getElementById('currentYear').textContent = new Date().getFullYear();
     </script>
 </body>

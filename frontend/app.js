@@ -5,13 +5,12 @@ const wsUrl = 'wss://echolinkplus-backend.onrender.com'; // Use WSS in productio
 let ws;
 let localStream = null;
 let peerConnection = null;
-let username = ''; // Initialize username as empty
+let username = ''; // CRITICAL: Initialize username as empty
 let currentCallTarget = null;
 let callStartTime = null;
 let timerInterval = null;
 
 // --- CRITICAL: STUN/TURN Configuration ---
-// ⚠️ REPLACE PLACEHOLDERS WITH YOUR ACTUAL TURN SERVER CREDENTIALS
 const iceServers = {
   iceServers: [
     { urls: 'stun:stun.l.google.com:19302' },
@@ -19,8 +18,7 @@ const iceServers = {
     { urls: 'stun:stun2.l.google.com:19302' },
     { urls: 'stun:stun3.l.google.com:19302' },
     { urls: 'stun:stun4.l.google.com:19302' },
-    // Add your TURN server(s) here — essential for NAT traversal
-    // ...
+    // Add your TURN server(s) here for production
   ],
   iceTransportPolicy: 'all'
 };
@@ -85,7 +83,7 @@ function connectWebSocket(attemptLoginOnOpen = true) {
     console.log("✅ WebSocket connected.");
     statusMessage.textContent = "Connected to EchoLink+ Server.";
     
-    // Attempt to log in if flag is set OR if a username was persisted but not yet set
+    // Attempt to log in if flag is set OR if a username was persisted
     if (attemptLoginOnOpen) {
       const userToUse = username || localStorage.getItem("echoname");
       if (userToUse) {
@@ -129,7 +127,6 @@ function connectWebSocket(attemptLoginOnOpen = true) {
 
       case "offer":
         if (currentCallTarget) {
-          console.warn(`Ignoring offer from ${data.caller}: already in a call or ringing.`);
           sendSignalingMessage({ type: "reject", target: data.caller, message: "Busy" });
           return;
         }
@@ -138,18 +135,15 @@ function connectWebSocket(attemptLoginOnOpen = true) {
 
       case "answer":
         if (!peerConnection || currentCallTarget !== data.callee) {
-          console.warn("Received answer without active call or for wrong peer.");
           if (data.callee) sendSignalingMessage({ type: "hangup", target: data.callee, message: "Invalid state" });
           endCall(false);
           return;
         }
         try {
           await peerConnection.setRemoteDescription(new RTCSessionDescription(data.answer));
-          console.log("✅ Call established with answer.");
           statusMessage.textContent = `In call with ${currentCallTarget}`;
           startCallTimer();
         } catch (e) {
-          console.error("❌ Failed to set remote answer:", e);
           statusMessage.textContent = "Error establishing call.";
           endCall(true);
         }
@@ -159,12 +153,9 @@ function connectWebSocket(attemptLoginOnOpen = true) {
         if (peerConnection && data.candidate) {
           try {
             await peerConnection.addIceCandidate(new RTCIceCandidate(data.candidate));
-            console.log("Added remote ICE candidate.");
           } catch (e) {
             console.warn("ICE candidate error (may be harmless or late):", e.message, e);
           }
-        } else {
-            console.warn("Received ICE candidate but no active peerConnection or invalid candidate.");
         }
         break;
 
@@ -179,17 +170,12 @@ function connectWebSocket(attemptLoginOnOpen = true) {
         break;
 
       case "error":
-        console.error("❌ Server error:", data.message);
         alert(`Server error: ${data.message}`);
         break;
-
-      default:
-        console.warn("Unknown signaling message type:", data.type, data);
     }
   };
 
   ws.onclose = () => {
-    console.warn("🔌 WebSocket closed. Reconnecting in 3 seconds...");
     statusMessage.textContent = "Disconnected. Reconnecting...";
     endCall(false);
     const shouldAttemptLogin = !!username; 
@@ -197,7 +183,6 @@ function connectWebSocket(attemptLoginOnOpen = true) {
   };
 
   ws.onerror = (err) => {
-    console.error("❌ WebSocket error:", err);
     statusMessage.textContent = "Connection error. Check console.";
   };
 }
@@ -206,9 +191,7 @@ function connectWebSocket(attemptLoginOnOpen = true) {
 function sendSignalingMessage(message) {
   if (ws?.readyState === WebSocket.OPEN) {
     ws.send(JSON.stringify(message));
-    console.log("⬆️ Sent signaling:", message.type);
   } else {
-    console.warn("WebSocket not open. Dropping message:", message.type);
     statusMessage.textContent = "Not connected to server.";
   }
 }
@@ -235,12 +218,14 @@ function handleLogin(savedUser = null) {
 function showAppView() {
   loginView.classList.add("hidden");
   appView.classList.remove("hidden");
-  loggedUser.textContent = username || 'Guest'; // FIX: Display confirmed username
+  // FIX 2: Correctly display the confirmed username
+  loggedUser.textContent = username || 'Guest'; 
   muteButton.classList.remove('hidden');
   unmuteButton.classList.add('hidden');
 }
 
 function showLoginView() {
+  endCall(false); // Ensure any active call is ended
   appView.classList.add("hidden");
   loginView.classList.remove("hidden");
   loggedUser.textContent = '';
@@ -253,19 +238,14 @@ function showLoginView() {
   statusMessage.textContent = "Please login.";
 }
 
-// FIX: Update function to show 'Call' link and exclude the logged-in user
+// FIX 1 & 3: Update function to show 'Call' link and exclude the logged-in user
 function updateUserList(users) {
   userList.innerHTML = "";
-  if (!users || users.length === 0) {
-      userList.innerHTML = '<li><p class="placeholder-text">No other users online.</p></li>';
-      return;
-  }
-  
   let hasOtherUsers = false;
   
   users.forEach(u => {
-    // FIX: Skip the current user and users with no defined username
-    if (!username || u.username === username) return;
+    // FIX 3: Skip the current user 
+    if (!username || u.username === username || u.username === 'undefined') return;
     
     hasOtherUsers = true;
 
@@ -285,7 +265,7 @@ function updateUserList(users) {
       li.classList.add("available");
       statusDot.style.backgroundColor = 'var(--success-green)'; 
       
-      // FIX: Create clickable 'Call' link
+      // FIX 1: Create clickable 'Call' link instead of 'Available' text
       const callLink = document.createElement("a");
       callLink.href = "#";
       callLink.textContent = "Call";
@@ -316,7 +296,64 @@ function updateUserList(users) {
   }
 }
 
-// --- WebRTC Call Logic (Only essential functions included) ---
+// --- WebRTC Call Logic (Required helper functions) ---
+
+function createPeerConnection(target) {
+  if (peerConnection) {
+    peerConnection.close();
+  }
+
+  const pc = new RTCPeerConnection(iceServers);
+
+  pc.onicecandidate = (e) => {
+    if (e.candidate) {
+      sendSignalingMessage({ type: "iceCandidate", target, candidate: e.candidate });
+    }
+  };
+
+  pc.ontrack = (e) => {
+    if (remoteAudio.srcObject !== e.streams[0]) {
+      remoteAudio.srcObject = e.streams[0];
+    }
+    if (!timerInterval) startCallTimer();
+  };
+
+  pc.oniceconnectionstatechange = () => {
+    const state = pc.iceConnectionState;
+    statusMessage.textContent = `ICE state: ${state}`;
+    if (state === "failed" || state === "disconnected") {
+      alert(`Call disconnected due to network issues.`);
+      endCall(true);
+    }
+  };
+
+  pc.onconnectionstatechange = () => {
+    const state = pc.connectionState;
+    statusMessage.textContent = `Connection state: ${state}`;
+    if (state === "connected") {
+        if (!timerInterval) startCallTimer();
+    } else if (state === "failed" || state === "disconnected") {
+        if (currentCallTarget) {
+            alert(`Call to ${currentCallTarget} disconnected.`);
+            endCall(false);
+        }
+    }
+  };
+
+  pc.onnegotiationneeded = async () => {
+      if (!currentCallTarget || !username) return;
+      try {
+          const offer = await pc.createOffer();
+          await pc.setLocalDescription(offer);
+          sendSignalingMessage({ type: "offer", target: currentCallTarget, offer: pc.localDescription });
+          statusMessage.textContent = `Re-negotiating with ${currentCallTarget}...`;
+      } catch (e) {
+          statusMessage.textContent = "Call renegotiation failed.";
+      }
+  };
+
+  return pc;
+}
 
 async function callUser(target) {
   if (currentCallTarget) {
@@ -346,92 +383,9 @@ async function callUser(target) {
     sendSignalingMessage({ type: "offer", target, offer });
 
   } catch (err) {
-    console.error("❌ Error starting call:", err);
     alert("Call failed: " + (err.message || "Microphone access denied."));
     endCall(true);
   }
-}
-// [ ... other WebRTC functions like createPeerConnection, onIncomingCall, acceptCall, rejectCall, hangUp, endCall, startCallTimer, stopCallTimer, toggleMute ... ]
-// (Assuming these large blocks remain unchanged from the previous complete version for brevity)
-
-// Place the full implementations of the following functions here:
-// createPeerConnection, onIncomingCall, acceptCall, rejectCall, hangUp, endCall, startCallTimer, stopCallTimer, toggleMute
-// ... 
-
-// --- WebRTC Call Logic (Continued - Paste the rest of the WebRTC functions here) ---
-
-function createPeerConnection(target) {
-  if (peerConnection) {
-    console.warn("Closing existing peer connection before creating a new one.");
-    peerConnection.close();
-  }
-
-  const pc = new RTCPeerConnection(iceServers);
-
-  pc.onicecandidate = (e) => {
-    if (e.candidate) {
-      sendSignalingMessage({ type: "iceCandidate", target, candidate: e.candidate });
-      console.log("Generated ICE candidate.");
-    } else {
-      console.log("All ICE candidates generated.");
-    }
-  };
-
-  pc.ontrack = (e) => {
-    console.log("Remote track received:", e.track);
-    if (remoteAudio.srcObject !== e.streams[0]) {
-      remoteAudio.srcObject = e.streams[0];
-      console.log("Attached remote stream to audio element.");
-    }
-    if (!timerInterval) startCallTimer();
-  };
-
-  pc.oniceconnectionstatechange = () => {
-    const state = pc.iceConnectionState;
-    console.log("ICE connection state changed:", state);
-    statusMessage.textContent = `ICE state: ${state}`;
-    if (state === "failed" || state === "disconnected") {
-      console.error(`CallCheck: ICE connection ${state}. Attempting graceful end.`);
-      alert(`Call disconnected due to network issues.`);
-      endCall(true);
-    }
-  };
-
-  pc.onconnectionstatechange = () => {
-    const state = pc.connectionState;
-    console.log("WebRTC connection state changed:", state);
-    statusMessage.textContent = `Connection state: ${state}`;
-    if (state === "connected") {
-        console.log("✅ WebRTC connection fully established!");
-        if (!timerInterval) startCallTimer();
-    } else if (state === "failed" || state === "disconnected") {
-        console.error(`CallCheck: WebRTC connection ${state}. Attempting graceful end.`);
-        if (currentCallTarget) {
-            alert(`Call to ${currentCallTarget} disconnected.`);
-            endCall(false);
-        }
-    }
-  };
-
-  pc.onnegotiationneeded = async () => {
-      console.log("Negotiation needed. Creating offer for renegotiation.");
-      if (!currentCallTarget || !username) {
-          console.warn('Negotiation needed but no current call target or username. Ignoring.');
-          return;
-      }
-      try {
-          const offer = await pc.createOffer();
-          await pc.setLocalDescription(offer);
-          sendSignalingMessage({ type: "offer", target: currentCallTarget, offer: pc.localDescription });
-          statusMessage.textContent = `Re-negotiating with ${currentCallTarget}...`;
-          console.log("Sent offer for renegotiation.");
-      } catch (e) {
-          console.error("❌ Error during renegotiation:", e);
-          statusMessage.textContent = "Call renegotiation failed.";
-      }
-  };
-
-  return pc;
 }
 
 async function onIncomingCall(caller, offer) {
@@ -445,7 +399,6 @@ async function onIncomingCall(caller, offer) {
     peerConnection = createPeerConnection(caller);
     await peerConnection.setRemoteDescription(new RTCSessionDescription(offer));
   } catch (err) {
-    console.error("❌ Error processing incoming offer:", err);
     statusMessage.textContent = "Error with incoming call.";
     sendSignalingMessage({ type: "reject", target: caller, message: "Offer processing failed" });
     endCall(false);
@@ -458,7 +411,6 @@ async function acceptCall() {
   incomingCallModal.classList.add("hidden");
 
   if (!currentCallTarget) {
-    console.error("❌ No current call target to accept.");
     statusMessage.textContent = "Error: no incoming call to accept.";
     return;
   }
@@ -479,7 +431,6 @@ async function acceptCall() {
     statusMessage.textContent = `In call with ${currentCallTarget}`;
     startCallTimer();
   } catch (err) {
-    console.error("❌ Error accepting call:", err);
     alert("Failed to accept call. Please check microphone access.");
     rejectCall();
   }

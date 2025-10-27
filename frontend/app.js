@@ -17,23 +17,12 @@ const iceServers = {
     { urls: 'stun:stun.l.google.com:19302' },
     { urls: 'stun:stun1.l.google.com:19302' },
     { urls: 'stun:stun2.l.google.com:19302' },
-    { urls: 'stun:stun3.l.google.com:19302' }, // Added for more robustness
-    { urls: 'stun:stun4.l.google.com:19302' }, // Added for more robustness
+    { urls: 'stun:stun3.l.google.com:19302' },
+    { urls: 'stun:stun4.l.google.com:19302' },
     // Add your TURN server(s) here — essential for NAT traversal
-    // For production, this is HIGHLY RECOMMENDED for global calls.
-    // Example with placeholders:
-    // {
-    //   urls: 'turn:your.turn.server.com:3478?transport=udp',
-    //   username: 'your_turn_username',
-    //   credential: 'your_turn_password'
-    // },
-    // {
-    //   urls: 'turns:your.turn.server.com:443?transport=tcp', // TURN over TLS
-    //   username: 'your_turn_username',
-    //   credential: 'your_turn_password'
-    // }
+    // ...
   ],
-  iceTransportPolicy: 'all' // 'relay' only if you want to force TURN (not recommended by default)
+  iceTransportPolicy: 'all'
 };
 
 // --- DOM Elements (Cache once) ---
@@ -44,18 +33,18 @@ const loggedUser = document.getElementById("logged-username");
 const userList = document.getElementById("user-list");
 const ringtone = document.getElementById("ringtone");
 const remoteAudio = document.getElementById("remoteAudio");
-const localAudio = document.getElementById("localAudio"); // Local audio element
+const localAudio = document.getElementById("localAudio"); 
 const callControls = document.getElementById("call-controls");
 const incomingCallModal = document.getElementById("incoming-call-modal");
 const incomingCallerName = document.getElementById("incoming-caller-name");
 const callTimerDisplay = document.getElementById("call-timer");
-const muteButton = document.getElementById('muteButton'); // Mute button
-const unmuteButton = document.getElementById('unmuteButton'); // Unmute button
-const loginForm = document.getElementById('loginForm'); // Added for login submit listener
-const logoutButton = document.getElementById('logoutButton'); // Added for logout listener
-const hangupButton = document.getElementById('hangupButton'); // Added for hangup listener
-const acceptCallButton = document.getElementById('acceptCallButton'); // Added for accept listener
-const rejectCallButton = document.getElementById('rejectCallButton'); // Added for reject listener
+const muteButton = document.getElementById('muteButton');
+const unmuteButton = document.getElementById('unmuteButton');
+const loginForm = document.getElementById('loginForm');
+const logoutButton = document.getElementById('logoutButton');
+const hangupButton = document.getElementById('hangupButton');
+const acceptCallButton = document.getElementById('acceptCallButton');
+const rejectCallButton = document.getElementById('rejectCallButton');
 
 
 // --- On Load: Try Persistent Login & Initial WebSocket Connect ---
@@ -63,9 +52,9 @@ window.addEventListener("load", () => {
   const savedUser = localStorage.getItem("echoname");
   if (savedUser) {
     document.getElementById("usernameInput").value = savedUser;
-    handleLogin(savedUser);
+    handleLogin(savedUser); // Attempt to log in with saved user
   } else {
-    connectWebSocket(false);
+    connectWebSocket(false); // Just connect, don't attempt login
   }
 
   // --- Initialize DOM Event Listeners ---
@@ -96,16 +85,13 @@ function connectWebSocket(attemptLoginOnOpen = true) {
     console.log("✅ WebSocket connected.");
     statusMessage.textContent = "Connected to EchoLink+ Server.";
     
-    // Ensure username is available here
-    if (attemptLoginOnOpen && username) {
-      sendSignalingMessage({ type: "login", username });
-    } else if (attemptLoginOnOpen) {
-        // This handles the case where localStorage had a user, but it wasn't picked up correctly
-        const savedUser = localStorage.getItem("echoname");
-        if (savedUser) {
-            username = savedUser;
-            sendSignalingMessage({ type: "login", username });
-        }
+    // Attempt to log in if flag is set OR if a username was persisted but not yet set
+    if (attemptLoginOnOpen) {
+      const userToUse = username || localStorage.getItem("echoname");
+      if (userToUse) {
+        username = userToUse; // Ensure global state is set before sending
+        sendSignalingMessage({ type: "login", username });
+      }
     }
   };
 
@@ -123,17 +109,17 @@ function connectWebSocket(attemptLoginOnOpen = true) {
 
     switch (data.type) {
       case "loginSuccess":
-        username = data.username; // CONFIRM username from server response
+        username = data.username; 
         localStorage.setItem("echoname", username);
-        showAppView();
+        showAppView(); // Update UI with successful login
         statusMessage.textContent = `Logged in as ${username}.`;
         break;
 
       case "loginFailure":
         alert(`Login failed: ${data.message}`);
         statusMessage.textContent = "Login failed. Please try again.";
-        username = ''; // Clear username on failure
-        localStorage.removeItem("echoname"); // Clear saved username too
+        username = '';
+        localStorage.removeItem("echoname"); 
         showLoginView();
         break;
 
@@ -143,7 +129,7 @@ function connectWebSocket(attemptLoginOnOpen = true) {
 
       case "offer":
         if (currentCallTarget) {
-          console.warn(`Ignoring offer from ${data.caller}: already in a call or ringing with ${currentCallTarget}.`);
+          console.warn(`Ignoring offer from ${data.caller}: already in a call or ringing.`);
           sendSignalingMessage({ type: "reject", target: data.caller, message: "Busy" });
           return;
         }
@@ -152,7 +138,7 @@ function connectWebSocket(attemptLoginOnOpen = true) {
 
       case "answer":
         if (!peerConnection || currentCallTarget !== data.callee) {
-          console.warn("Received answer without active call or for wrong peer. Sending hangup.");
+          console.warn("Received answer without active call or for wrong peer.");
           if (data.callee) sendSignalingMessage({ type: "hangup", target: data.callee, message: "Invalid state" });
           endCall(false);
           return;
@@ -237,15 +223,11 @@ function handleLogin(savedUser = null) {
     return;
   }
   
-  // 1. ALWAYS set the global username first.
   username = userToLogin; 
 
   if (ws?.readyState === WebSocket.OPEN) {
-    // 2. If the WS is open, send the message immediately.
     sendSignalingMessage({ type: "login", username });
   } else {
-    // 3. If WS is closed or null, start the connection process.
-    // connectWebSocket(true) ensures 'login' is sent on 'onopen'.
     connectWebSocket(true); 
   }
 }
@@ -253,9 +235,7 @@ function handleLogin(savedUser = null) {
 function showAppView() {
   loginView.classList.add("hidden");
   appView.classList.remove("hidden");
-  // FIX for "Logged in as undefined"
-  loggedUser.textContent = username || 'Guest'; // Display the confirmed username
-  // Reset mute button state
+  loggedUser.textContent = username || 'Guest'; // FIX: Display confirmed username
   muteButton.classList.remove('hidden');
   unmuteButton.classList.add('hidden');
 }
@@ -264,22 +244,30 @@ function showLoginView() {
   appView.classList.add("hidden");
   loginView.classList.remove("hidden");
   loggedUser.textContent = '';
-  username = ''; // Clear global username
+  // Send logout signal to server before clearing local state
+  if (ws?.readyState === WebSocket.OPEN && username) {
+      sendSignalingMessage({ type: "logout", username: username });
+  }
+  username = '';
   localStorage.removeItem("echoname");
   statusMessage.textContent = "Please login.";
 }
 
-// FIX: Update function to show 'Call' and exclude the logged-in user
+// FIX: Update function to show 'Call' link and exclude the logged-in user
 function updateUserList(users) {
   userList.innerHTML = "";
   if (!users || users.length === 0) {
-      userList.innerHTML = '<li><p>No other users online.</p></li>';
+      userList.innerHTML = '<li><p class="placeholder-text">No other users online.</p></li>';
       return;
   }
   
+  let hasOtherUsers = false;
+  
   users.forEach(u => {
-    // FIX 2 & 3: Don't list self, and check if username is properly set
+    // FIX: Skip the current user and users with no defined username
     if (!username || u.username === username) return;
+    
+    hasOtherUsers = true;
 
     const li = document.createElement("li");
     li.className = "user-item";
@@ -297,9 +285,9 @@ function updateUserList(users) {
       li.classList.add("available");
       statusDot.style.backgroundColor = 'var(--success-green)'; 
       
-      // FIX 1: Change 'Available' text to a clickable 'Call' link/button
+      // FIX: Create clickable 'Call' link
       const callLink = document.createElement("a");
-      callLink.href = "#"; // Prevent page reload
+      callLink.href = "#";
       callLink.textContent = "Call";
       callLink.className = "call-link";
       callLink.onclick = (e) => {
@@ -315,16 +303,63 @@ function updateUserList(users) {
       li.style.cursor = "not-allowed";
       statusDot.style.backgroundColor = 'var(--warning-orange)';
       statusInfoSpan.textContent = "Busy";
-      statusInfoSpan.prepend(statusDot); // Place dot before text
+      statusInfoSpan.prepend(statusDot);
     }
     
     li.appendChild(usernameSpan);
     li.appendChild(statusInfoSpan);
     userList.appendChild(li);
   });
+  
+  if (!hasOtherUsers) {
+      userList.innerHTML = '<li><p class="placeholder-text">No other users online.</p></li>';
+  }
 }
 
-// --- WebRTC Call Logic (No changes needed) ---
+// --- WebRTC Call Logic (Only essential functions included) ---
+
+async function callUser(target) {
+  if (currentCallTarget) {
+    alert(`You are already in a call or attempting to call ${currentCallTarget}.`);
+    return;
+  }
+  if (!username) {
+      alert("Please log in first to make a call.");
+      return;
+  }
+
+  currentCallTarget = target;
+  statusMessage.textContent = `Calling ${target}...`;
+
+  try {
+    localStream = await navigator.mediaDevices.getUserMedia({ audio: true });
+    if (localAudio) localAudio.srcObject = localStream;
+    localStream.getAudioTracks().forEach(track => track.enabled = true); 
+    muteButton.classList.remove('hidden');
+    unmuteButton.classList.add('hidden');
+
+    peerConnection = createPeerConnection(target);
+    localStream.getTracks().forEach(track => peerConnection.addTrack(track, localStream));
+
+    const offer = await peerConnection.createOffer();
+    await peerConnection.setLocalDescription(offer);
+    sendSignalingMessage({ type: "offer", target, offer });
+
+  } catch (err) {
+    console.error("❌ Error starting call:", err);
+    alert("Call failed: " + (err.message || "Microphone access denied."));
+    endCall(true);
+  }
+}
+// [ ... other WebRTC functions like createPeerConnection, onIncomingCall, acceptCall, rejectCall, hangUp, endCall, startCallTimer, stopCallTimer, toggleMute ... ]
+// (Assuming these large blocks remain unchanged from the previous complete version for brevity)
+
+// Place the full implementations of the following functions here:
+// createPeerConnection, onIncomingCall, acceptCall, rejectCall, hangUp, endCall, startCallTimer, stopCallTimer, toggleMute
+// ... 
+
+// --- WebRTC Call Logic (Continued - Paste the rest of the WebRTC functions here) ---
+
 function createPeerConnection(target) {
   if (peerConnection) {
     console.warn("Closing existing peer connection before creating a new one.");
@@ -399,48 +434,12 @@ function createPeerConnection(target) {
   return pc;
 }
 
-async function callUser(target) {
-  if (currentCallTarget) {
-    alert(`You are already in a call or attempting to call ${currentCallTarget}.`);
-    return;
-  }
-  if (!username) {
-      alert("Please log in first to make a call.");
-      return;
-  }
-
-  currentCallTarget = target;
-  statusMessage.textContent = `Calling ${target}...`;
-  console.log(`Attempting to call ${target}`);
-
-  try {
-    localStream = await navigator.mediaDevices.getUserMedia({ audio: true });
-    if (localAudio) localAudio.srcObject = localStream;
-    localStream.getAudioTracks().forEach(track => track.enabled = true); 
-    muteButton.classList.remove('hidden');
-    unmuteButton.classList.add('hidden');
-
-    peerConnection = createPeerConnection(target);
-    localStream.getTracks().forEach(track => peerConnection.addTrack(track, localStream));
-
-    const offer = await peerConnection.createOffer();
-    await peerConnection.setLocalDescription(offer);
-    sendSignalingMessage({ type: "offer", target, offer });
-
-  } catch (err) {
-    console.error("❌ Error starting call:", err);
-    alert("Call failed: " + (err.message || "Microphone access denied."));
-    endCall(true);
-  }
-}
-
 async function onIncomingCall(caller, offer) {
   currentCallTarget = caller;
   incomingCallerName.textContent = `Incoming call from ${caller}`;
   incomingCallModal.classList.remove("hidden");
   ringtone.play().catch(e => console.warn("Ringtone blocked by browser (autoplay policy):", e));
   statusMessage.textContent = `Incoming call from ${caller}`;
-  console.log(`Incoming call from ${caller}`);
 
   try {
     peerConnection = createPeerConnection(caller);
@@ -463,7 +462,6 @@ async function acceptCall() {
     statusMessage.textContent = "Error: no incoming call to accept.";
     return;
   }
-  console.log(`Accepting call from ${currentCallTarget}`);
 
   try {
     localStream = await navigator.mediaDevices.getUserMedia({ audio: true });
@@ -494,14 +492,12 @@ function rejectCall() {
   
   if (currentCallTarget) {
     sendSignalingMessage({ type: "reject", target: currentCallTarget, message: "User rejected call." });
-    console.log(`Rejected call from ${currentCallTarget}`);
   }
   endCall(false);
   statusMessage.textContent = "Call rejected.";
 }
 
 function hangUp() {
-  console.log("Hanging up call.");
   if (currentCallTarget) {
     sendSignalingMessage({ type: "hangup", target: currentCallTarget, message: "User hung up." });
   }
@@ -509,26 +505,21 @@ function hangUp() {
   statusMessage.textContent = "Call ended.";
 }
 
-// Cleans up all call-related resources
 function endCall(sendHangupSignal = false) {
-  console.log("Ending call. sendHangupSignal:", sendHangupSignal);
   stopCallTimer();
 
   if (localStream) {
     localStream.getTracks().forEach(track => track.stop());
     localStream = null;
     if (localAudio) localAudio.srcObject = null;
-    console.log("Local media tracks stopped.");
   }
   if (remoteAudio) {
     remoteAudio.srcObject = null;
-    console.log("Remote audio stream cleared.");
   }
 
   if (peerConnection) {
     peerConnection.close();
     peerConnection = null;
-    console.log("PeerConnection closed.");
   }
 
   if (currentCallTarget && sendHangupSignal) {
@@ -544,10 +535,8 @@ function endCall(sendHangupSignal = false) {
   if (unmuteButton) unmuteButton.classList.add('hidden');
 
   statusMessage.textContent = "Ready.";
-  console.log("All call resources cleaned up.");
 }
 
-// --- Call Timer Functions (No changes needed) ---
 function startCallTimer() {
   callControls.classList.remove("hidden");
   callTimerDisplay.classList.remove("hidden");
@@ -561,37 +550,32 @@ function startCallTimer() {
     const s = String(elapsed % 60).padStart(2, "0");
     callTimerDisplay.textContent = `${m}:${s}`;
   }, 1000);
-  console.log("Call timer started.");
 }
 
 function stopCallTimer() {
   if (timerInterval) {
     clearInterval(timerInterval);
     timerInterval = null;
-    console.log("Call timer stopped.");
   }
   callTimerDisplay.textContent = "00:00";
   callTimerDisplay.classList.add("hidden");
   callControls.classList.add("hidden");
 }
 
-// --- Mute/Unmute Functionality (Completed) ---
 function toggleMute() {
     if (!localStream) {
-        console.warn("No local stream to mute/unmute.");
         statusMessage.textContent = "No active microphone.";
         return;
     }
 
     const audioTracks = localStream.getAudioTracks();
     if (audioTracks.length === 0) {
-        console.warn("No audio tracks found in local stream.");
         statusMessage.textContent = "No audio input available.";
         return;
     }
     
     const currentlyMuted = !audioTracks[0].enabled;
-    const newState = !currentlyMuted; // true = unmute, false = mute
+    const newState = !currentlyMuted;
     
     audioTracks.forEach(track => track.enabled = newState);
 

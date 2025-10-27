@@ -1,19 +1,31 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-<<<<<<< HEAD
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>EchoLink+ - Secure Voice Calls</title>
-    <link rel="icon" href="/favicon.ico" type="image/x-icon"> <!-- Assuming favicon.ico in root -->
-    <!-- Google Fonts for a modern, attractive font -->
+    <link rel="icon" href="/favicon.ico" type="image/x-icon">
+    <!-- Google Fonts -->
     <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700&display=swap" rel="stylesheet">
-    <!-- Link to your external stylesheet -->
+    <!-- External CSS -->
     <link rel="stylesheet" href="style.css">
+    <style>
+        .hidden { display: none; }
+        .user-item { cursor: pointer; margin: 5px 0; }
+        .available { color: green; }
+        .busy { color: red; cursor: not-allowed; opacity: 0.6; }
+        #call-controls button { margin-right: 5px; }
+        #incoming-call-modal { 
+            position: fixed; top: 0; left: 0; width: 100%; height: 100%;
+            display: flex; align-items: center; justify-content: center;
+            background: rgba(0,0,0,0.6); 
+        }
+        #incoming-call-content { background: #fff; padding: 20px; border-radius: 8px; text-align: center; }
+        footer { text-align: center; margin-top: 20px; font-size: 0.9em; color: #666; }
+    </style>
 </head>
 <body>
     <div class="container">
-        <!-- Status message positioned at the top of the container -->
         <p id="status-message">Initializing...</p>
 
         <h1>EchoLink+</h1>
@@ -21,7 +33,7 @@
         <!-- Login View -->
         <div id="login-view">
             <h2>Connect with friends.</h2>
-            <form id="loginForm">
+            <form id="loginForm" onsubmit="event.preventDefault(); handleLogin();">
                 <input type="text" id="usernameInput" placeholder="Enter your Echo-Name" required>
                 <button type="submit">Login</button>
             </form>
@@ -31,13 +43,12 @@
         <div id="app-view" class="hidden">
             <div class="logged-info">
                 <p>Logged in as: <span id="logged-username"></span></p>
-                <button id="logoutButton" class="small-button">Logout</button>
+                <button id="logoutButton" class="small-button" onclick="showLoginView()">Logout</button>
             </div>
 
             <h2>Available Users</h2>
             <ul id="user-list">
-                <!-- User list items will be populated here by JavaScript -->
-                <li><p class="placeholder-text">Loading users...</p></li> <!-- Placeholder text inside li for consistency -->
+                <li><p class="placeholder-text">Loading users...</p></li>
             </ul>
 
             <!-- Call Timer -->
@@ -45,82 +56,39 @@
 
             <!-- Call Controls -->
             <div id="call-controls" class="hidden">
-                <button id="hangupButton" class="control-button danger">End Call</button>
-                <button id="muteButton" class="control-button warning">Mute</button>
-                <button id="unmuteButton" class="control-button warning hidden">Unmute</button>
+                <button id="hangupButton" class="control-button danger" onclick="hangUp()">End Call</button>
+                <button id="muteButton" class="control-button warning" onclick="toggleMute()">Mute</button>
+                <button id="unmuteButton" class="control-button warning hidden" onclick="toggleMute()">Unmute</button>
             </div>
-            
-            <!-- Audio elements for WebRTC -->
+
+            <!-- Audio elements -->
             <audio id="remoteAudio" autoplay></audio>
             <audio id="localAudio" autoplay muted></audio>
         </div>
-
     </div>
 
     <!-- Incoming Call Modal -->
     <div id="incoming-call-modal" class="hidden">
         <div id="incoming-call-content">
-            <h2 id="incoming-caller-name">Incoming call from [Caller Name]</h2>
+            <h2 id="incoming-caller-name">Incoming call</h2>
             <div id="modal-buttons">
-                <button id="acceptCallButton" class="modal-button success">Accept</button>
-                <button id="rejectCallButton" class="modal-button danger">Reject</button>
+                <button id="acceptCallButton" class="modal-button success" onclick="acceptCall()">Accept</button>
+                <button id="rejectCallButton" class="modal-button danger" onclick="rejectCall()">Reject</button>
             </div>
         </div>
     </div>
 
-    <!-- Ringtone Audio -->
+    <!-- Ringtone -->
     <audio id="ringtone" src="sounds/ringtone.mp3" loop preload="auto"></audio>
-    <!-- IMPORTANT: Ensure 'sounds/ringtone.mp3' exists in your project -->
 
     <footer>
         <p>&copy; <span id="currentYear"></span> EchoLink+. All rights reserved.</p>
     </footer>
 
-    <!-- Link to your JavaScript file -->
+    <!-- JavaScript -->
     <script src="app.js"></script>
     <script>
-        // Set current year in footer
         document.getElementById('currentYear').textContent = new Date().getFullYear();
     </script>
-=======
-<meta charset="UTF-8">
-<title>EchoLink+</title>
-<style>
-.hidden { display:none; }
-.user-item { cursor:pointer; margin:5px 0; }
-.available { color:green; }
-.busy { color:red; }
-</style>
-</head>
-<body>
-
-<div id="login-view">
-  <input id="usernameInput" placeholder="Enter Echo-Name"/>
-  <button onclick="handleLogin()">Login</button>
-</div>
-
-<div id="app-view" class="hidden">
-  <p id="logged-username"></p>
-  <p id="status-message"></p>
-  <ul id="user-list"></ul>
-
-  <div id="incoming-call-modal" class="hidden">
-    <p id="incoming-caller-name"></p>
-    <button onclick="acceptCall()">Accept</button>
-    <button onclick="rejectCall()">Reject</button>
-  </div>
-
-  <audio id="ringtone" src="/ringtone.mp3" loop></audio>
-  <audio id="remoteAudio" autoplay></audio>
-  <audio id="localAudio" autoplay muted></audio>
-
-  <div id="call-controls" class="hidden">
-    <span id="call-timer">00:00</span>
-    <button onclick="hangUp()">Hang Up</button>
-  </div>
-</div>
-
-<script src="/app.js"></script>
->>>>>>> bd2f2b4 (Update backend and frontend files for WebRTC app)
 </body>
 </html>

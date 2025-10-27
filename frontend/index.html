@@ -4,20 +4,16 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>EchoLink+ - Secure Voice Calls</title>
-    <link rel="icon" href="/favicon.ico" type="image/x-icon"> <!-- Assuming favicon.ico in root -->
-    <!-- Google Fonts for a modern, attractive font -->
+    <link rel="icon" href="/favicon.ico" type="image/x-icon">
     <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700&display=swap" rel="stylesheet">
-    <!-- Link to your external stylesheet -->
     <link rel="stylesheet" href="style.css">
 </head>
 <body>
     <div class="container">
-        <!-- Status message positioned at the top of the container -->
         <p id="status-message">Initializing...</p>
 
         <h1>EchoLink+</h1>
 
-        <!-- Login View -->
         <div id="login-view">
             <h2>Connect with friends.</h2>
             <form id="loginForm">
@@ -26,7 +22,6 @@
             </form>
         </div>
 
-        <!-- Application View -->
         <div id="app-view" class="hidden">
             <div class="logged-info">
                 <p>Logged in as: <span id="logged-username"></span></p>
@@ -35,28 +30,23 @@
 
             <h2>Available Users</h2>
             <ul id="user-list">
-                <!-- User list items will be populated here by JavaScript -->
-                <li><p class="placeholder-text">Loading users...</p></li> <!-- Placeholder text inside li for consistency -->
+                <li><p class="placeholder-text">Loading users...</p></li>
             </ul>
 
-            <!-- Call Timer -->
             <div id="call-timer" class="hidden">00:00</div>
 
-            <!-- Call Controls -->
             <div id="call-controls" class="hidden">
                 <button id="hangupButton" class="control-button danger">End Call</button>
                 <button id="muteButton" class="control-button warning">Mute</button>
                 <button id="unmuteButton" class="control-button warning hidden">Unmute</button>
             </div>
             
-            <!-- Audio elements for WebRTC -->
             <audio id="remoteAudio" autoplay></audio>
             <audio id="localAudio" autoplay muted></audio>
         </div>
 
     </div>
 
-    <!-- Incoming Call Modal -->
     <div id="incoming-call-modal" class="hidden">
         <div id="incoming-call-content">
             <h2 id="incoming-caller-name">Incoming call from [Caller Name]</h2>
@@ -67,15 +57,11 @@
         </div>
     </div>
 
-    <!-- Ringtone Audio -->
     <audio id="ringtone" src="sounds/ringtone.mp3" loop preload="auto"></audio>
-    <!-- IMPORTANT: Ensure 'sounds/ringtone.mp3' exists in your project -->
-
     <footer>
         <p>&copy; <span id="currentYear"></span> EchoLink+. All rights reserved.</p>
     </footer>
 
-    <!-- Link to your JavaScript file -->
     <script src="app.js"></script>
     <script>
         // Set current year in footer

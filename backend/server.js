@@ -1,3 +1,4 @@
+<<<<<<< HEAD
 // backend/server.js
 const express = require('express');
 const http = require('http');
@@ -293,3 +294,81 @@ wss.on('connection', (ws, req) => {
 server.listen(PORT, () => {
   console.log(`🚀 EchoLink+ Signaling Server running on port ${PORT}`);
 });
+=======
+import express from 'express';
+import http from 'http';
+import WebSocket from 'ws';
+import path from 'path';
+import { fileURLToPath } from 'url';
+
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
+
+const app = express();
+const server = http.createServer(app);
+const wss = new WebSocket.Server({ server });
+
+// Store connected users
+const users = new Map();
+
+// Serve client HTML/JS
+app.get('/', (req, res) => {
+  res.sendFile(path.join(__dirname, 'index.html'));
+});
+
+app.get('/app.js', (req, res) => {
+  res.sendFile(path.join(__dirname, 'app.js'));
+});
+
+app.get('/ringtone.mp3', (req, res) => {
+  res.sendFile(path.join(__dirname, 'ringtone.mp3'));
+});
+
+// WebSocket signaling logic
+wss.on('connection', (ws) => {
+  ws.on('message', (message) => {
+    let data;
+    try { data = JSON.parse(message); } 
+    catch { return console.error("Invalid JSON:", message); }
+
+    switch (data.type) {
+      case 'login':
+        users.set(data.username, ws);
+        ws.username = data.username;
+        ws.send(JSON.stringify({ type: 'loginSuccess', username: data.username }));
+        broadcastUserList();
+        break;
+
+      case 'offer':
+      case 'answer':
+      case 'iceCandidate':
+      case 'hangup':
+      case 'reject':
+        const target = users.get(data.target);
+        if (target && target.readyState === WebSocket.OPEN) {
+          target.send(JSON.stringify({ ...data, caller: ws.username }));
+        }
+        break;
+    }
+  });
+
+  ws.on('close', () => {
+    if (ws.username) {
+      users.delete(ws.username);
+      broadcastUserList();
+    }
+  });
+});
+
+function broadcastUserList() {
+  const list = Array.from(users.keys()).map(u => ({ username: u, status: 'Available' }));
+  users.forEach(ws => {
+    if (ws.readyState === WebSocket.OPEN) {
+      ws.send(JSON.stringify({ type: 'userList', users: list }));
+    }
+  });
+}
+
+const PORT = process.env.PORT || 3000;
+server.listen(PORT, () => console.log(`Server running on port ${PORT}`));
+>>>>>>> bd2f2b4 (Update backend and frontend files for WebRTC app)

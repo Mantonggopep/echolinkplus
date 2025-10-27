@@ -1,28 +1,60 @@
+<<<<<<< HEAD
 // app.js (Client-Side WebRTC Application)
 
 // --- Configuration ---
-const wsUrl = 'wss://echolinkplus-backend.onrender.com';
+const wsUrl = 'wss://echolinkplus-backend.onrender.com'; // Use WSS in production
 let ws;
 let localStream = null;
 let peerConnection = null;
-let username = '';
 let currentCallTarget = null;
+let username = ''; // Initialize username as empty
 let callStartTime = null;
 let timerInterval = null;
 
 // --- CRITICAL: STUN/TURN Configuration ---
+// ⚠️ REPLACE PLACEHOLDERS WITH YOUR ACTUAL TURN SERVER CREDENTIALS
 const iceServers = {
-  iceServers: [
-    { urls: 'stun:stun.l.google.com:19302' },
-    { urls: 'stun:stun1.l.google.com:19302' },
-    { urls: 'stun:stun2.l.google.com:19302' },
-    { urls: 'stun:stun3.l.google.com:19302' },
-    { urls: 'stun:stun4.l.google.com:19302' },
-  ],
-  iceTransportPolicy: 'all'
+  iceServers: [
+    { urls: 'stun:stun.l.google.com:19302' },
+    { urls: 'stun:stun1.l.google.com:19302' },
+    { urls: 'stun:stun2.l.google.com:19302' },
+    { urls: 'stun:stun3.l.google.com:19302' }, // Added for more robustness
+    { urls: 'stun:stun4.l.google.com:19302' }, // Added for more robustness
+    // Add your TURN server(s) here — essential for NAT traversal
+    // For production, this is HIGHLY RECOMMENDED for global calls.
+    // Example with placeholders:
+    // {
+    //   urls: 'turn:your.turn.server.com:3478?transport=udp',
+    //   username: 'your_turn_username',
+    //   credential: 'your_turn_password'
+    // },
+    // {
+    //   urls: 'turns:your.turn.server.com:443?transport=tcp', // TURN over TLS
+    //   username: 'your_turn_username',
+    //   credential: 'your_turn_password'
+    // }
+  ],
+  iceTransportPolicy: 'all' // 'relay' only if you want to force TURN (not recommended by default)
+};
+
+// --- DOM Elements (Cache once) ---
+=======
+// --- Configuration ---
+const wsUrl = 'wss://echolinkplus-backend.onrender.com';
+let ws, localStream = null, peerConnection = null, currentCallTarget = null, username = '';
+let callStartTime = null, timerInterval = null;
+
+// --- ICE/STUN Configuration ---
+const iceServers = {
+  iceServers: [
+    { urls: 'stun:stun.l.google.com:19302' },
+    { urls: 'stun:stun1.l.google.com:19302' }
+  ],
+  iceTransportPolicy: 'all'
 };
 
 // --- DOM Elements ---
+>>>>>>> bd2f2b4 (Update backend and frontend files for WebRTC app)
 const loginView = document.getElementById("login-view");
 const appView = document.getElementById("app-view");
 const statusMessage = document.getElementById("status-message");
@@ -30,219 +62,347 @@ const loggedUser = document.getElementById("logged-username");
 const userList = document.getElementById("user-list");
 const ringtone = document.getElementById("ringtone");
 const remoteAudio = document.getElementById("remoteAudio");
-const localAudio = document.getElementById("localAudio"); 
+<<<<<<< HEAD
+const localAudio = document.getElementById("localAudio"); // Local audio element
+=======
+const localAudio = document.getElementById("localAudio");
+>>>>>>> bd2f2b4 (Update backend and frontend files for WebRTC app)
 const callControls = document.getElementById("call-controls");
 const incomingCallModal = document.getElementById("incoming-call-modal");
 const incomingCallerName = document.getElementById("incoming-caller-name");
 const callTimerDisplay = document.getElementById("call-timer");
-const muteButton = document.getElementById('muteButton');
-const unmuteButton = document.getElementById('unmuteButton');
-const loginForm = document.getElementById('loginForm');
-const logoutButton = document.getElementById('logoutButton');
-const hangupButton = document.getElementById('hangupButton');
-const acceptCallButton = document.getElementById('acceptCallButton');
-const rejectCallButton = document.getElementById('rejectCallButton');
+<<<<<<< HEAD
+const muteButton = document.getElementById('muteButton'); // Mute button
+const unmuteButton = document.getElementById('unmuteButton'); // Unmute button
 
-// --- On Load: Persistent Login ---
+
+// --- On Load: Try Persistent Login & Initial WebSocket Connect (FIXED) ---
 window.addEventListener("load", () => {
-  const savedUser = localStorage.getItem("echoname");
-  if (savedUser) {
-    document.getElementById("usernameInput").value = savedUser;
-    handleLogin(savedUser);
-  } else {
-    connectWebSocket(false);
-  }
-
-  // DOM Event Listeners
-  loginForm?.addEventListener('submit', (e) => {
-      e.preventDefault();
-      handleLogin();
-  });
-  logoutButton?.addEventListener('click', showLoginView);
-  hangupButton?.addEventListener('click', hangUp);
-  muteButton?.addEventListener('click', toggleMute);
-  unmuteButton?.addEventListener('click', toggleMute);
-  acceptCallButton?.addEventListener('click', acceptCall);
-  rejectCallButton?.addEventListener('click', rejectCall);
+  const savedUser = localStorage.getItem("echoname");
+  if (savedUser) {
+    document.getElementById("usernameInput").value = savedUser;
+    // Call handleLogin directly to set username and attempt connection/login
+    handleLogin(savedUser);
+  } else {
+    // Only connect the WebSocket. We don't attempt login as username is empty.
+    connectWebSocket(false);
+  }
 });
 
-// --- WebSocket Management ---
-function connectWebSocket(attemptLoginOnOpen = true) {
-  if (ws && (ws.readyState === WebSocket.OPEN || ws.readyState === WebSocket.CONNECTING)) return;
+// --- WebSocket Management (FIXED) ---
+function connectWebSocket(attemptLoginOnOpen = true) { // Added parameter
+  if (ws && (ws.readyState === WebSocket.OPEN || ws.readyState === WebSocket.CONNECTING)) {
+    console.log("WebSocket already open or connecting.");
+    return;
+  }
 
-  ws = new WebSocket(wsUrl);
+  ws = new WebSocket(wsUrl);
 
-  ws.onopen = () => {
-    console.log("✅ WebSocket connected.");
-    statusMessage.textContent = "Connected to EchoLink+ Server.";
-    if (attemptLoginOnOpen) {
-      const userToUse = username || localStorage.getItem("echoname");
-      if (userToUse) {
-        username = userToUse;
-        sendSignalingMessage({ type: "login", username });
-      }
-    }
-  };
+  ws.onopen = () => {
+    console.log("✅ WebSocket connected.");
+    statusMessage.textContent = "Connected to EchoLink+ Server.";
+    // Check both the flag and the global username before attempting login
+    if (attemptLoginOnOpen && username) {
+      sendSignalingMessage({ type: "login", username });
+    }
+  };
 
-  ws.onmessage = async (event) => {
-    let data;
-    try { data = JSON.parse(event.data); } catch { return; }
+  ws.onmessage = async (event) => {
+    let data;
+    try {
+      data = JSON.parse(event.data);
+    } catch (e) {
+      console.error("❌ Invalid JSON from server:", event.data, e);
+      statusMessage.textContent = "Error: Invalid server message.";
+      return;
+    }
 
-    console.log("📥 Signaling:", data.type, data);
+    console.log("📥 Signaling:", data.type, data);
 
-    switch (data.type) {
-      case "loginSuccess":
-        username = data.username;
-        localStorage.setItem("echoname", username);
-        showAppView();
-        statusMessage.textContent = `Logged in as ${username}.`;
-        break;
-      case "loginFailure":
-        alert(`Login failed: ${data.message}`);
-        username = '';
-        localStorage.removeItem("echoname");
-        showLoginView();
-        break;
-      case "userList":
-        updateUserList(data.users);
-        break;
-      case "offer":
-        if (currentCallTarget) {
-          sendSignalingMessage({ type: "reject", target: data.caller, message: "Busy" });
-          return;
-        }
-        await onIncomingCall(data.caller, data.offer);
-        break;
-      case "answer":
-        if (!peerConnection || currentCallTarget !== data.callee) {
-          if (data.callee) sendSignalingMessage({ type: "hangup", target: data.callee });
-          endCall(false);
-          return;
-        }
-        await peerConnection.setRemoteDescription(new RTCSessionDescription(data.answer));
-        statusMessage.textContent = `In call with ${currentCallTarget}`;
-        startCallTimer();
-        break;
-      case "iceCandidate":
-        if (peerConnection && data.candidate) {
-          try { await peerConnection.addIceCandidate(new RTCIceCandidate(data.candidate)); } catch {}
-        }
-        break;
-      case "reject":
-        alert(`${data.caller || 'Peer'} rejected your call: ${data.message}`);
-        endCall(false);
-        break;
-      case "hangup":
-        alert(`${data.caller || 'Peer'} ended the call.`);
-        endCall(false);
-        break;
-    }
-  };
+    switch (data.type) {
+      case "loginSuccess":
+        username = data.username; // CONFIRM username from server response
+        localStorage.setItem("echoname", username);
+        showAppView();
+        statusMessage.textContent = `Logged in as ${username}.`;
+        break;
 
-  ws.onclose = () => {
-    statusMessage.textContent = "Disconnected. Reconnecting...";
-    endCall(false);
-    const shouldAttemptLogin = !!username; 
-    setTimeout(() => connectWebSocket(shouldAttemptLogin), 3000);
-  };
+      case "loginFailure":
+        alert(`Login failed: ${data.message}`);
+        statusMessage.textContent = "Login failed. Please try again.";
+        username = ''; // Clear username on failure
+        localStorage.removeItem("echoname"); // Clear saved username too
+        showLoginView();
+        break;
+
+      case "userList":
+        updateUserList(data.users);
+        break;
+
+      case "offer":
+        if (currentCallTarget) {
+          console.warn(`Ignoring offer from ${data.caller}: already in a call or ringing with ${currentCallTarget}.`);
+          sendSignalingMessage({ type: "reject", target: data.caller, message: "Busy" });
+          return;
+        }
+        await onIncomingCall(data.caller, data.offer);
+        break;
+
+      case "answer":
+        if (!peerConnection || currentCallTarget !== data.callee) { // Ensure answer is for the current call
+          console.warn("Received answer without active call or for wrong peer. Sending hangup.");
+          if (data.callee) sendSignalingMessage({ type: "hangup", target: data.callee, message: "Invalid state" });
+          endCall(false);
+          return;
+        }
+        try {
+          await peerConnection.setRemoteDescription(new RTCSessionDescription(data.answer));
+          console.log("✅ Call established with answer.");
+          statusMessage.textContent = `In call with ${currentCallTarget}`;
+          startCallTimer(); // Start timer after setting remote answer
+        } catch (e) {
+          console.error("❌ Failed to set remote answer:", e);
+          statusMessage.textContent = "Error establishing call.";
+          endCall(true); // Attempt to send hangup and clean up
+        }
+        break;
+
+      case "iceCandidate":
+        if (peerConnection && data.candidate) {
+          try {
+            await peerConnection.addIceCandidate(new RTCIceCandidate(data.candidate));
+            console.log("Added remote ICE candidate.");
+          } catch (e) {
+            // This often happens if candidate arrives after connection is established
+            console.warn("ICE candidate error (may be harmless or late):", e.message, e);
+          }
+        } else {
+            console.warn("Received ICE candidate but no active peerConnection or invalid candidate.");
+        }
+        break;
+
+      case "reject":
+        alert(`${data.caller || 'Peer'} rejected your call: ${data.message || 'No reason given.'}`);
+        endCall(false); // Clean up locally, no need to send hangup back
+        break;
+
+      case "hangup":
+        alert(`${data.caller || 'Peer'} ended the call.`);
+        endCall(false); // Clean up locally, no need to send hangup back
+        break;
+
+      case "error":
+        console.error("❌ Server error:", data.message);
+        alert(`Server error: ${data.message}`);
+        break;
+
+      default:
+        console.warn("Unknown signaling message type:", data.type, data);
+    }
+  };
+
+  ws.onclose = () => {
+    console.warn("🔌 WebSocket closed. Reconnecting in 3 seconds...");
+    statusMessage.textContent = "Disconnected. Reconnecting...";
+    endCall(false); // Clean up any active call state
+    // IMPORTANT: If we are trying to login, we should keep the flag true for the reconnect.
+    const shouldAttemptLogin = !!username; 
+    setTimeout(() => connectWebSocket(shouldAttemptLogin), 3000);
+  };
+
+  ws.onerror = (err) => {
+    console.error("❌ WebSocket error:", err);
+    statusMessage.textContent = "Connection error. Check console.";
+    // onclose will typically follow onerror
+  };
 }
 
+// Sends a signaling message if WebSocket is open
 function sendSignalingMessage(message) {
-  if (ws?.readyState === WebSocket.OPEN) {
+  if (ws?.readyState === WebSocket.OPEN) {
     ws.send(JSON.stringify(message));
+    console.log("⬆️ Sent signaling:", message.type);
   } else {
-    console.warn("Attempted to send signaling message while WebSocket is closed or closing.");
+    console.warn("WebSocket not open. Dropping message:", message.type);
+    statusMessage.textContent = "Not connected to server.";
   }
 }
 
-// --- UI Functions ---
+// --- UI Functions (FIXED handleLogin) ---
 function handleLogin(savedUser = null) {
-  const inputUsername = document.getElementById("usernameInput")?.value?.trim();
-  const userToLogin = savedUser || inputUsername;
-  if (!userToLogin) return alert("Enter your Echo-Name.");
+  const inputUsername = document.getElementById("usernameInput")?.value?.trim();
+  const userToLogin = savedUser || inputUsername;
 
-  username = userToLogin; 
-  if (ws?.readyState === WebSocket.OPEN) {
-    sendSignalingMessage({ type: "login", username });
-  } else {
-    connectWebSocket(true);
-  }
+  if (!userToLogin) {
+    alert("Please enter your Echo-Name.");
+    return;
+  }
+  
+  // 1. ALWAYS set the global username first.
+  username = userToLogin; 
+
+  if (ws?.readyState === WebSocket.OPEN) {
+    // 2. If the WS is open, send the message immediately.
+    sendSignalingMessage({ type: "login", username });
+  } else {
+    // 3. If WS is closed or null, start the connection process.
+    // The connectWebSocket(true) call ensures 'login' is sent on 'onopen'.
+    connectWebSocket(true); 
+  }
 }
 
 function showAppView() {
-  loginView.classList.add("hidden");
-  appView.classList.remove("hidden");
-  loggedUser.textContent = username || 'Guest';
-  muteButton.classList.remove('hidden');
-  unmuteButton.classList.add('hidden');
+  loginView.classList.add("hidden");
+  appView.classList.remove("hidden");
+  loggedUser.textContent = username; // Display the confirmed username
+  // Reset mute button state
+  muteButton.classList.remove('hidden');
+  unmuteButton.classList.add('hidden');
 }
 
 function showLoginView() {
-  endCall(false);
-  appView.classList.add("hidden");
-  loginView.classList.remove("hidden");
-  loggedUser.textContent = '';
-  if (ws?.readyState === WebSocket.OPEN && username) {
-      sendSignalingMessage({ type: "logout", username });
-  }
-  username = '';
-  localStorage.removeItem("echoname");
-  statusMessage.textContent = "Please login.";
+  appView.classList.add("hidden");
+  loginView.classList.remove("hidden");
+  loggedUser.textContent = ''; // Clear displayed username
+  username = ''; // Clear global username
+  localStorage.removeItem("echoname");
+  statusMessage.textContent = "Please login.";
 }
 
-// --- Update User List with Call Buttons (FIXED FILTERING) ---
 function updateUserList(users) {
-  userList.innerHTML = "";
-  let hasOtherUsers = false;
-  
-  users.forEach(u => {
-    const peerUsername = u.username;
-    // CRITICAL FIX: Robust check to exclude the current user and invalid names
-    if (!peerUsername || peerUsername === username || peerUsername === 'undefined') return; 
+  userList.innerHTML = "";
+  if (!users || users.length === 0) {
+      userList.innerHTML = '<li><p>No other users online.</p></li>';
+      return;
+  }
+  
+  users.forEach(u => {
+    if (u.username === username) return; // Don't list self
 
-    hasOtherUsers = true;
+    const li = document.createElement("li");
+    li.className = "user-item";
+    
+    const usernameSpan = document.createElement("span");
+    usernameSpan.textContent = u.username;
+    
+    const statusInfoSpan = document.createElement("span"); // To hold status text and dot
+    statusInfoSpan.className = "status-info";
 
-    const li = document.createElement("li");
-    li.className = "user-item";
+    const statusDot = document.createElement("span");
+    statusDot.className = "status-dot";
 
-    const nameSpan = document.createElement("span");
-    nameSpan.textContent = peerUsername;
+    if (u.status === "Available") {
+      li.classList.add("available");
+      li.onclick = () => callUser(u.username);
+      statusDot.style.backgroundColor = 'var(--success-green)'; // Using CSS variable
+      statusInfoSpan.textContent = "Available";
+    } else {
+      li.classList.add("busy");
+      li.style.cursor = "not-allowed";
+      statusDot.style.backgroundColor = 'var(--warning-orange)'; // Using CSS variable
+      statusInfoSpan.textContent = "Busy";
+    }
+    
+    li.appendChild(usernameSpan);
+    statusInfoSpan.prepend(statusDot); // Place dot before text
+    li.appendChild(statusInfoSpan);
+=======
 
-    const statusSpan = document.createElement("span");
-    statusSpan.className = "status-info";
+// --- Persistent Login ---
+window.addEventListener("load", () => {
+  const savedUser = localStorage.getItem("echoname");
+  if (savedUser) { document.getElementById("usernameInput").value = savedUser; handleLogin(savedUser); }
+  else connectWebSocket();
+});
 
-    const statusDot = document.createElement("span");
-    statusDot.className = "status-dot";
+// --- WebSocket ---
+function connectWebSocket() {
+  if (ws && (ws.readyState === WebSocket.OPEN || ws.readyState === WebSocket.CONNECTING)) return;
+  ws = new WebSocket(wsUrl);
 
-    if (u.status === "Available") {
-      li.classList.add("available");
-      statusDot.style.backgroundColor = 'var(--success-green)';
-      const callLink = document.createElement("a");
-      callLink.href = "#";
-      callLink.textContent = "Call";
-      callLink.className = "call-link";
-      callLink.onclick = (e) => { e.preventDefault(); callUser(peerUsername); };
-      statusSpan.appendChild(statusDot);
-      statusSpan.appendChild(callLink);
-    } else {
-      li.classList.add("busy");
-      statusDot.style.backgroundColor = 'var(--warning-orange)';
-      statusSpan.textContent = "Busy";
-      statusSpan.prepend(statusDot);
-    }
+  ws.onopen = () => {
+    console.log("WebSocket connected.");
+    statusMessage.textContent = "Connected to EchoLink+ Server.";
+    if (username) sendSignalingMessage({ type: "login", username });
+  };
 
-    li.appendChild(nameSpan);
-    li.appendChild(statusSpan);
-    userList.appendChild(li);
-  });
+  ws.onmessage = async (event) => {
+    let data;
+    try { data = JSON.parse(event.data); } catch { return; }
 
-  if (!hasOtherUsers) userList.innerHTML = '<li><p class="placeholder-text">No other users online.</p></li>';
+    switch (data.type) {
+      case "loginSuccess":
+        username = data.username;
+        localStorage.setItem("echoname", username);
+        showAppView();
+        break;
+      case "loginFailure":
+        alert(`Login failed: ${data.message}`);
+        username=''; showLoginView();
+        break;
+      case "userList":
+        updateUserList(data.users);
+        break;
+      case "offer":
+        if (currentCallTarget) { sendSignalingMessage({ type:"reject", target:data.caller, message:"Busy"}); return; }
+        await onIncomingCall(data.caller, data.offer);
+        break;
+      case "answer":
+        if (!peerConnection || !currentCallTarget) { endCall(false); return; }
+        await peerConnection.setRemoteDescription(new RTCSessionDescription(data.answer));
+        startCallTimer();
+        break;
+      case "iceCandidate":
+        if (peerConnection && data.candidate) { try { await peerConnection.addIceCandidate(new RTCIceCandidate(data.candidate)); } catch {} }
+        break;
+      case "reject":
+        alert(`Call rejected: ${data.message||'No reason given'}`); endCall(false); break;
+      case "hangup":
+        alert(`${data.caller||'Peer'} ended the call.`); endCall(false); break;
+      case "error":
+        alert(`Server Error: ${data.message}`);
+        statusMessage.textContent = `Server Error: ${data.message}`;
+        break;
+    }
+  };
+
+  ws.onclose = () => { statusMessage.textContent="Disconnected. Reconnecting..."; endCall(false); setTimeout(connectWebSocket,3000); };
+  ws.onerror = (err) => { console.error(err); statusMessage.textContent="WebSocket error."; };
 }
 
-// --- WebRTC Helper Functions (Integrated for Completeness) ---
+function sendSignalingMessage(msg) { if(ws&&ws.readyState===WebSocket.OPEN) ws.send(JSON.stringify(msg)); }
 
+// --- UI ---
+function handleLogin(savedUser=null) {
+  const inputUsername = savedUser || document.getElementById("usernameInput").value.trim();
+  if(!inputUsername){ alert("Enter a valid Echo-Name."); return; }
+  username=inputUsername;
+  if(!ws || ws.readyState!==WebSocket.OPEN) connectWebSocket();
+  else sendSignalingMessage({ type:"login", username });
+}
+
+function showAppView(){ loginView.classList.add("hidden"); appView.classList.remove("hidden"); loggedUser.textContent=username; }
+function showLoginView(){ loginView.classList.remove("hidden"); appView.classList.add("hidden"); loggedUser.textContent=''; username=''; localStorage.removeItem("echoname"); document.getElementById("usernameInput").value=''; }
+
+function updateUserList(users){
+  userList.innerHTML="";
+  users.forEach(u=>{
+    if(u.username===username) return;
+    const li=document.createElement("li");
+    li.textContent=`${u.username}${u.status!=="Available"?" (Busy)":""}`;
+    li.className="user-item";
+    if(u.status==="Available"){ li.classList.add("available"); li.onclick=()=>{ if(!currentCallTarget) callUser(u.username); else alert(`Already in call with ${currentCallTarget}`); }; }
+    else { li.classList.add("busy"); li.style.cursor="not-allowed"; li.style.opacity=0.6; }
+>>>>>>> bd2f2b4 (Update backend and frontend files for WebRTC app)
+    userList.appendChild(li);
+  });
+}
+
+<<<<<<< HEAD
+// --- WebRTC Call Logic ---
 function createPeerConnection(target) {
   if (peerConnection) {
+    console.warn("Closing existing peer connection before creating a new one.");
     peerConnection.close();
   }
 
@@ -251,34 +411,64 @@ function createPeerConnection(target) {
   pc.onicecandidate = (e) => {
     if (e.candidate) {
       sendSignalingMessage({ type: "iceCandidate", target, candidate: e.candidate });
+      console.log("Generated ICE candidate.");
+    } else {
+      console.log("All ICE candidates generated.");
     }
   };
 
   pc.ontrack = (e) => {
+    console.log("Remote track received:", e.track);
     if (remoteAudio.srcObject !== e.streams[0]) {
       remoteAudio.srcObject = e.streams[0];
+      console.log("Attached remote stream to audio element.");
     }
+    // Start timer on first track (more reliable for actual media flow)
     if (!timerInterval) startCallTimer();
   };
 
   pc.oniceconnectionstatechange = () => {
     const state = pc.iceConnectionState;
+    console.log("ICE connection state changed:", state);
     statusMessage.textContent = `ICE state: ${state}`;
     if (state === "failed" || state === "disconnected") {
-      console.warn(`Call disconnected due to network issues. ICE State: ${state}`);
-      // Only end call if we have a target, to avoid false positives during setup
-      if (currentCallTarget) endCall(true); 
+      console.error(`CallCheck: ICE connection ${state}. Attempting graceful end.`);
+      alert(`Call disconnected due to network issues.`);
+      endCall(true); // Attempt to send hangup and clean up
+    }
+  };
+
+  pc.onconnectionstatechange = () => {
+    const state = pc.connectionState;
+    console.log("WebRTC connection state changed:", state);
+    statusMessage.textContent = `Connection state: ${state}`;
+    if (state === "connected") {
+        console.log("✅ WebRTC connection fully established!");
+        if (!timerInterval) startCallTimer();
+    } else if (state === "failed" || state === "disconnected") {
+        console.error(`CallCheck: WebRTC connection ${state}. Attempting graceful end.`);
+        // `oniceconnectionstatechange` likely handled this, but good to have fallback
+        if (currentCallTarget) { // Only if we were in an active call
+            alert(`Call to ${currentCallTarget} disconnected.`);
+            endCall(false); // Clean up locally, peer likely knows
+        }
     }
   };
 
   pc.onnegotiationneeded = async () => {
-      if (!currentCallTarget || !username) return;
+      console.log("Negotiation needed. Creating offer for renegotiation.");
+      if (!currentCallTarget || !username) {
+          console.warn('Negotiation needed but no current call target or username. Ignoring.');
+          return;
+      }
       try {
           const offer = await pc.createOffer();
           await pc.setLocalDescription(offer);
           sendSignalingMessage({ type: "offer", target: currentCallTarget, offer: pc.localDescription });
           statusMessage.textContent = `Re-negotiating with ${currentCallTarget}...`;
+          console.log("Sent offer for renegotiation.");
       } catch (e) {
+          console.error("❌ Error during renegotiation:", e);
           statusMessage.textContent = "Call renegotiation failed.";
       }
   };
@@ -298,24 +488,27 @@ async function callUser(target) {
 
   currentCallTarget = target;
   statusMessage.textContent = `Calling ${target}...`;
+  console.log(`Attempting to call ${target}`);
 
   try {
-    // Get local audio stream
     localStream = await navigator.mediaDevices.getUserMedia({ audio: true });
     if (localAudio) localAudio.srcObject = localStream;
+    // Mute by default on call start until user explicitly unmutes or initial state is handled
     localStream.getAudioTracks().forEach(track => track.enabled = true); 
+    muteButton.classList.remove('hidden');
+    unmuteButton.classList.add('hidden');
 
     peerConnection = createPeerConnection(target);
     localStream.getTracks().forEach(track => peerConnection.addTrack(track, localStream));
 
-    // Create and send offer
     const offer = await peerConnection.createOffer();
     await peerConnection.setLocalDescription(offer);
-    sendSignalingMessage({ type: "offer", target, offer: peerConnection.localDescription });
+    sendSignalingMessage({ type: "offer", target, offer });
 
   } catch (err) {
+    console.error("❌ Error starting call:", err);
     alert("Call failed: " + (err.message || "Microphone access denied."));
-    endCall(true);
+    endCall(true); // Clean up and inform peer if possible
   }
 }
 
@@ -325,32 +518,38 @@ async function onIncomingCall(caller, offer) {
   incomingCallModal.classList.remove("hidden");
   ringtone.play().catch(e => console.warn("Ringtone blocked by browser (autoplay policy):", e));
   statusMessage.textContent = `Incoming call from ${caller}`;
+  console.log(`Incoming call from ${caller}`);
 
   try {
     peerConnection = createPeerConnection(caller);
     await peerConnection.setRemoteDescription(new RTCSessionDescription(offer));
   } catch (err) {
+    console.error("❌ Error processing incoming offer:", err);
     statusMessage.textContent = "Error with incoming call.";
     sendSignalingMessage({ type: "reject", target: caller, message: "Offer processing failed" });
-    endCall(false);
+    endCall(false); // Reject and clean up locally
   }
 }
 
 async function acceptCall() {
   ringtone.pause();
-  ringtone.currentTime = 0;
+  ringtone.currentTime = 0; // Reset ringtone
   incomingCallModal.classList.add("hidden");
 
   if (!currentCallTarget) {
+    console.error("❌ No current call target to accept.");
     statusMessage.textContent = "Error: no incoming call to accept.";
     return;
   }
+  console.log(`Accepting call from ${currentCallTarget}`);
 
   try {
     localStream = await navigator.mediaDevices.getUserMedia({ audio: true });
     if (localAudio) localAudio.srcObject = localStream;
-    localStream.getAudioTracks().forEach(track => track.enabled = true);
-    
+    localStream.getAudioTracks().forEach(track => track.enabled = true); // Ensure mic is on
+    muteButton.classList.remove('hidden');
+    unmuteButton.classList.add('hidden');
+
     localStream.getTracks().forEach(track => peerConnection.addTrack(track, localStream));
 
     const answer = await peerConnection.createAnswer();
@@ -360,8 +559,9 @@ async function acceptCall() {
     statusMessage.textContent = `In call with ${currentCallTarget}`;
     startCallTimer();
   } catch (err) {
+    console.error("❌ Error accepting call:", err);
     alert("Failed to accept call. Please check microphone access.");
-    rejectCall();
+    rejectCall(); // If cannot get media, reject the call
   }
 }
 
@@ -372,56 +572,69 @@ function rejectCall() {
   
   if (currentCallTarget) {
     sendSignalingMessage({ type: "reject", target: currentCallTarget, message: "User rejected call." });
+    console.log(`Rejected call from ${currentCallTarget}`);
   }
-  endCall(false);
+  endCall(false); // Clean up local state
   statusMessage.textContent = "Call rejected.";
 }
 
 function hangUp() {
+  console.log("Hanging up call.");
   if (currentCallTarget) {
     sendSignalingMessage({ type: "hangup", target: currentCallTarget, message: "User hung up." });
   }
-  endCall(true);
+  endCall(true); // Clean up and signal if necessary
   statusMessage.textContent = "Call ended.";
 }
 
+// Cleans up all call-related resources
 function endCall(sendHangupSignal = false) {
+  console.log("Ending call. sendHangupSignal:", sendHangupSignal);
   stopCallTimer();
 
+  // Stop local media tracks
   if (localStream) {
     localStream.getTracks().forEach(track => track.stop());
     localStream = null;
     if (localAudio) localAudio.srcObject = null;
+    console.log("Local media tracks stopped.");
   }
   if (remoteAudio) {
     remoteAudio.srcObject = null;
+    console.log("Remote audio stream cleared.");
   }
 
+  // Close the RTCPeerConnection
   if (peerConnection) {
     peerConnection.close();
     peerConnection = null;
+    console.log("PeerConnection closed.");
   }
 
+  // Only send hangup signal if explicitly requested and a target exists
   if (currentCallTarget && sendHangupSignal) {
     sendSignalingMessage({ type: "hangup", target: currentCallTarget, message: "User hung up." });
   }
 
-  currentCallTarget = null;
+  currentCallTarget = null; // Clear the call target
   ringtone.pause();
   ringtone.currentTime = 0;
-  incomingCallModal.classList.add("hidden");
+  incomingCallModal.classList.add("hidden"); // Ensure modal is hidden
   
+  // Reset mute buttons
   if (muteButton) muteButton.classList.remove('hidden');
   if (unmuteButton) unmuteButton.classList.add('hidden');
 
   statusMessage.textContent = "Ready.";
+  console.log("All call resources cleaned up.");
 }
 
+// --- Call Timer Functions ---
 function startCallTimer() {
   callControls.classList.remove("hidden");
   callTimerDisplay.classList.remove("hidden");
   
-  if (timerInterval) clearInterval(timerInterval);
+  if (timerInterval) clearInterval(timerInterval); // Clear any existing timer
 
   callStartTime = Date.now();
   timerInterval = setInterval(() => {
@@ -430,43 +643,99 @@ function startCallTimer() {
     const s = String(elapsed % 60).padStart(2, "0");
     callTimerDisplay.textContent = `${m}:${s}`;
   }, 1000);
+  console.log("Call timer started.");
 }
 
 function stopCallTimer() {
   if (timerInterval) {
     clearInterval(timerInterval);
     timerInterval = null;
+    console.log("Call timer stopped.");
   }
   callTimerDisplay.textContent = "00:00";
   callTimerDisplay.classList.add("hidden");
-  callControls.classList.add("hidden");
+  callControls.classList.add("hidden"); // Hide call controls
 }
 
+// --- Mute/Unmute Functionality ---
 function toggleMute() {
     if (!localStream) {
-        statusMessage.textContent = "No active microphone.";
-        return;
-    }
-
-    const audioTracks = localStream.getAudioTracks();
-    if (audioTracks.length === 0) {
-        statusMessage.textContent = "No audio input available.";
-        return;
-    }
-    
-    // Check the first audio track's enabled state
-    const currentlyMuted = !audioTracks[0].enabled;
-    const newState = !currentlyMuted;
-    
-    audioTracks.forEach(track => track.enabled = newState);
-
-    if (newState) {
-        muteButton.classList.remove('hidden');
-        unmuteButton.classList.add('hidden');
-        statusMessage.textContent = "Microphone ON";
-    } else {
-        muteButton.classList.add('hidden');
-        unmuteButton.classList.remove('hidden');
-        statusMessage.textContent = "Microphone MUTED";
-    }
+        cons
+=======
+// --- WebRTC ---
+function createPeerConnection(target){
+  if(peerConnection){ peerConnection.close(); peerConnection=null; }
+  const pc = new RTCPeerConnection(iceServers);
+  pc.onicecandidate = e=>{ if(e.candidate) sendSignalingMessage({ type:"iceCandidate", target, candidate:e.candidate }); };
+  pc.ontrack = e=>{ if(remoteAudio.srcObject!==e.streams[0]) remoteAudio.srcObject=e.streams[0]; if(!timerInterval) startCallTimer(); };
+  pc.onconnectionstatechange = ()=>{ if(pc.connectionState==='failed'||pc.connectionState==='disconnected'){ alert(`Call connection ${pc.connectionState}. Ending call.`); endCall(true); } };
+  pc.oniceconnectionstatechange = ()=>{ if(pc.iceConnectionState==='failed'){ statusMessage.textContent="Connection failed (ICE)."; endCall(true); } };
+  return pc;
 }
+
+async function callUser(target){
+  if(currentCallTarget){ alert(`Already in call with ${currentCallTarget}`); return; }
+  currentCallTarget=target; statusMessage.textContent=`Calling ${target}...`;
+  try{
+    localStream=await navigator.mediaDevices.getUserMedia({ audio:true });
+    if(localAudio) localAudio.srcObject=localStream;
+    peerConnection=createPeerConnection(target);
+    localStream.getTracks().forEach(track=>peerConnection.addTrack(track, localStream));
+    const offer=await peerConnection.createOffer(); await peerConnection.setLocalDescription(offer);
+    sendSignalingMessage({ type:"offer", target, offer });
+  } catch(e){ alert("Failed to start call. Check microphone."); endCall(false); }
+}
+
+async function onIncomingCall(caller, offer){
+  currentCallTarget=caller; incomingCallerName.textContent=`Incoming call from ${caller}`; incomingCallModal.classList.remove("hidden");
+  try{ await ringtone.play(); } catch{} statusMessage.textContent=`Incoming call from ${caller}`;
+  try{ peerConnection=createPeerConnection(caller); await peerConnection.setRemoteDescription(new RTCSessionDescription(offer)); } catch(e){ rejectCall(); }
+}
+
+async function acceptCall(){
+  ringtone.pause(); ringtone.currentTime=0; incomingCallModal.classList.add("hidden");
+  if(!currentCallTarget||!peerConnection) return;
+  try{
+    localStream=await navigator.mediaDevices.getUserMedia({ audio:true });
+    if(localAudio) localAudio.srcObject=localStream;
+    localStream.getTracks().forEach(track=>peerConnection.addTrack(track, localStream));
+    const answer=await peerConnection.createAnswer(); await peerConnection.setLocalDescription(answer);
+    sendSignalingMessage({ type:"answer", target:currentCallTarget, answer });
+    statusMessage.textContent=`In call with ${currentCallTarget}`;
+  } catch(e){ rejectCall(); }
+}
+
+function rejectCall(){
+  ringtone.pause(); ringtone.currentTime=0; incomingCallModal.classList.add("hidden");
+  if(currentCallTarget) sendSignalingMessage({ type:"reject", target:currentCallTarget, message:"Call rejected." });
+  endCall(false); statusMessage.textContent="Call rejected.";
+}
+
+function hangUp(){ if(currentCallTarget) sendSignalingMessage({ type:"hangup", target:currentCallTarget, message:"User hung up." }); endCall(true); }
+
+function endCall(sendHangupSignal=false){
+  stopCallTimer();
+  if(localStream){ localStream.getTracks().forEach(t=>t.stop()); localStream=null; if(localAudio) localAudio.srcObject=null; }
+  if(peerConnection){ peerConnection.close(); peerConnection=null; }
+  if(remoteAudio) remoteAudio.srcObject=null;
+  if(sendHangupSignal && currentCallTarget) sendSignalingMessage({ type:"hangup", target:currentCallTarget, message:"User hung up." });
+  currentCallTarget=null;
+  ringtone.pause(); ringtone.currentTime=0;
+  incomingCallModal.classList.add("hidden");
+  statusMessage.textContent="Ready.";
+}
+
+// --- Call Timer ---
+function startCallTimer(){
+  callControls.classList.remove("hidden"); callTimerDisplay.classList.remove("hidden");
+  callStartTime=Date.now();
+  timerInterval=setInterval(()=>{
+    const elapsed=Date.now()-callStartTime;
+    const minutes=Math.floor(elapsed/60000);
+    const seconds=Math.floor((elapsed%60000)/1000);
+    callTimerDisplay.textContent=`${minutes.toString().padStart(2,'0')}:${seconds.toString().padStart(2,'0')}`;
+  },1000);
+}
+
+function stopCallTimer(){ clearInterval(timerInterval); timerInterval=null; callStartTime=null; callTimerDisplay.textContent="00:00"; callTimerDisplay.classList.add("hidden"); callControls.classList.add("hidden"); }
+>>>>>>> bd2f2b4 (Update backend and frontend files for WebRTC app)
